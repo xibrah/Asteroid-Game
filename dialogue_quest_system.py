@@ -446,6 +446,41 @@ class QuestManager:
             self.add_quest(quest)
 
 
+class Quest:
+    def __init__(self, quest_id, title, description, objectives):
+        self.id = quest_id
+        self.title = title
+        self.description = description
+        self.objectives = objectives  # List of objective descriptions
+        self.objective_progress = [0] * len(objectives)  # Progress for each objective
+        self.objective_targets = [1] * len(objectives)   # Target value for each objective
+        self.completed = False
+        self.credit_reward = 0
+        self.xp_reward = 0
+        self.item_rewards = []
+        self.reputation_changes = {}  # {"faction": change_value}
+        self.prerequisite_quests = []  # List of quest IDs that must be completed first
+    
+    def update_objective(self, index, progress):
+        """Update progress on a specific objective"""
+        if 0 <= index < len(self.objectives):
+            self.objective_progress[index] += progress
+            if self.objective_progress[index] > self.objective_targets[index]:
+                self.objective_progress[index] = self.objective_targets[index]
+            
+            # Check if all objectives are complete
+            if all(self.objective_progress[i] >= self.objective_targets[i] for i in range(len(self.objectives))):
+                self.completed = True
+                return True
+        return False
+    
+    def is_available(self, completed_quests):
+        """Check if this quest is available based on prerequisites"""
+        for quest_id in self.prerequisite_quests:
+            if quest_id not in completed_quests:
+                return False
+        return True
+
 # Example usage:
 # dialogue_manager = DialogueManager(800, 600)
 # dialogue_manager.start_dialogue(npc, player)

@@ -55,6 +55,7 @@ class GameState:
     DIALOGUE = 4
     INVENTORY = 5
     GAME_OVER = 6
+    SPACE_TRAVEL = 7
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
