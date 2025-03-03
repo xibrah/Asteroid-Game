@@ -1,0 +1,49 @@
+# The Core Museum Map
+# Legend:
+# W = Wall
+# F = Floor
+# D = Door
+# T = Table/Display
+# G = Glass Case
+# P = Former Prison Cell (now exhibit)
+# X = Robot Exhibit
+# S = Security Station
+# M = Memorial
+# E = Exit (to another area)
+# @ = Player starting position
+# 1-9 = NPC positions (see bottom for references)
+
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WS      WPPPPPPPPPPWXXXXXXXXXXXXXXXW
+WS 2    WPPPPPPPPPPWXXXXXXXXXXXXXXXW
+WS      WPPPPPPPPPPWXXXXXXXXXXXXXXXW
+WWWWDWWWWPPPPPPPPPPWXXXXXXXXXXXXXXXW
+W       WPPPPPPPPPPWXXXXXXXXXXXXXXXW
+W       WPPPPPPPPPPWXXXXXXXXXXXXXXXW
+W   @   WPPPPPPPPPPWWWWWWWWDWWWWWWWW
+W       WPPPPPPPPPPW               W
+W  TTTT WPPPPPPPPPPW               W
+W  GGGG WPPPPPPPPPPW               W
+W       DPPPPPPPPPPD   1           W
+W  TTTT WPPPPPPPPPPW               W
+W  GGGG WPPPPPPPPPPW               W
+W       WPPPPPPPPPPW               W
+WWWWDWWWWPPPPPPPPPPWWWWWWWWWWWWWWWWW
+WM                                 W
+WM                                 W
+WM                                 W
+WM                                 W
+WM            3                    W
+WM                                 W
+WM                                 W
+WM                                 W
+WM                                 W
+WM                                 W
+WM                                 W
+WWWWWWWWWWWWWWWEWWWWWWWWWWWWWWWWWWWW
+
+# NPC Reference:
+# 1 = Museum Curator
+# 2 = Security Guard
+# 3 = Pallas Historian
+# 4 = Visitor

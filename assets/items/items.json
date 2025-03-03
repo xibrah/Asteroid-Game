@@ -1,0 +1,598 @@
+{
+  "items": [
+    {
+      "id": "space_pistol",
+      "name": "Space Pistol",
+      "type": "weapon",
+      "subtype": "firearm",
+      "description": "Standard issue sidearm for security personnel. Reliable but not particularly powerful.",
+      "lore": "Manufactured by Martian Arms Corporation, this model became popular during the Martian War due to its reliability in vacuum and low-maintenance requirements.",
+      "icon": "space_pistol_icon.png",
+      "sprite": "space_pistol_sprite.png",
+      "value": 150,
+      "weight": 2.0,
+      "stackable": false,
+      "properties": {
+        "damage": 15,
+        "range": 7,
+        "fire_rate": 2,
+        "accuracy": 75,
+        "durability": 100,
+        "max_durability": 100
+      },
+      "requirements": {
+        "level": 1,
+        "skills": {
+          "combat": 5
+        }
+      },
+      "effects": []
+    },
+    {
+      "id": "mining_laser",
+      "name": "Mining Laser",
+      "type": "weapon",
+      "subtype": "energy",
+      "description": "A cutting tool repurposed as a weapon. High damage but limited range and slow firing rate.",
+      "lore": "Originally designed for asteroid mining operations, these tools have found a second life as makeshift weapons in the Belt, where proper firearms can be hard to come by.",
+      "icon": "mining_laser_icon.png",
+      "sprite": "mining_laser_sprite.png",
+      "value": 280,
+      "weight": 4.5,
+      "stackable": false,
+      "properties": {
+        "damage": 30,
+        "range": 4,
+        "fire_rate": 1,
+        "accuracy": 90,
+        "durability": 80,
+        "max_durability": 80
+      },
+      "requirements": {
+        "level": 5,
+        "skills": {
+          "engineering": 10
+        }
+      },
+      "effects": [
+        {
+          "type": "heat",
+          "value": 5,
+          "duration": 3
+        }
+      ]
+    },
+    {
+      "id": "light_armor",
+      "name": "Light Armor Vest",
+      "type": "armor",
+      "subtype": "torso",
+      "description": "Basic protection that doesn't restrict movement. Made from a composite of lightweight materials.",
+      "lore": "These vests became standard equipment for civilians working in contested areas during the Martian War. Not military-grade, but better than nothing.",
+      "icon": "light_armor_icon.png",
+      "sprite": "light_armor_sprite.png",
+      "value": 200,
+      "weight": 3.0,
+      "stackable": false,
+      "properties": {
+        "defense": 15,
+        "durability": 100,
+        "max_durability": 100
+      },
+      "requirements": {
+        "level": 1
+      },
+      "effects": []
+    },
+    {
+      "id": "medkit",
+      "name": "Medkit",
+      "type": "consumable",
+      "subtype": "medical",
+      "description": "Emergency medical supplies that can quickly heal wounds and stabilize injuries.",
+      "lore": "Developed by Luna Medical Systems, these compact kits contain advanced nanobots and synthetic clotting agents that can treat a variety of injuries on the spot.",
+      "icon": "medkit_icon.png",
+      "sprite": "medkit_sprite.png",
+      "value": 50,
+      "weight": 1.0,
+      "stackable": true,
+      "max_stack": 5,
+      "properties": {
+        "health_restore": 50,
+        "use_time": 2
+      },
+      "requirements": {},
+      "effects": [
+        {
+          "type": "heal",
+          "value": 50,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "id": "energy_pack",
+      "name": "Energy Pack",
+      "type": "consumable",
+      "subtype": "energy",
+      "description": "A compact battery pack that can recharge energy weapons or power emergency systems.",
+      "lore": "These standardized power cells were developed early in Belt exploration to ensure compatibility across different manufacturers and systems.",
+      "icon": "energy_pack_icon.png",
+      "sprite": "energy_pack_sprite.png",
+      "value": 30,
+      "weight": 0.5,
+      "stackable": true,
+      "max_stack": 10,
+      "properties": {
+        "energy_restore": 30,
+        "use_time": 1
+      },
+      "requirements": {},
+      "effects": [
+        {
+          "type": "energy_restore",
+          "value": 30,
+          "duration": 0
+        }
+      ]
+    },
+    {
+      "id": "neutral_diplomat_badge",
+      "name": "Neutral Diplomat Badge",
+      "type": "accessory",
+      "subtype": "badge",
+      "description": "A badge identifying the wearer as a neutral diplomat under Psyche's protection. Grants certain immunities in faction conflicts.",
+      "lore": "After establishing Psyche as neutral territory, Stella Vega created this system of diplomatic recognition to allow for safer negotiation between factions.",
+      "icon": "diplomat_badge_icon.png",
+      "sprite": "diplomat_badge_sprite.png",
+      "value": 300,
+      "weight": 0.1,
+      "stackable": false,
+      "properties": {},
+      "requirements": {
+        "reputation": {
+          "stella_vega": 15
+        }
+      },
+      "effects": [
+        {
+          "type": "faction_hostility_reduction",
+          "value": 30,
+          "duration": -1
+        }
+      ]
+    },
+    {
+      "id": "access_card_executive",
+      "name": "Executive Access Card",
+      "type": "key",
+      "subtype": "access_card",
+      "description": "Grants access to executive areas of Psyche Station, including secure areas and private quarters.",
+      "lore": "Stella Vega rarely grants these high-level access cards to anyone outside her inner circle. Possessing one marks you as someone she trusts implicitly.",
+      "icon": "exec_access_icon.png",
+      "sprite": "exec_access_sprite.png",
+      "value": 500,
+      "weight": 0.1,
+      "stackable": false,
+      "properties": {
+        "access_level": 4
+      },
+      "requirements": {},
+      "effects": []
+    },
+    {
+      "id": "ship_component_advanced",
+      "name": "Advanced Ship Component",
+      "type": "quest_item",
+      "subtype": "ship_part",
+      "description": "A sophisticated component from Stella's shipyard. Could be used to upgrade a spacecraft's performance.",
+      "lore": "Components of this quality are rarely seen outside military vessels. It represents Stella's shipyard's advanced technological capabilities.",
+      "icon": "ship_component_icon.png",
+      "sprite": "ship_component_sprite.png",
+      "value": 800,
+      "weight": 5.0,
+      "stackable": false,
+      "properties": {},
+      "requirements": {},
+      "effects": []
+    },
+    {
+      "id": "stella_recommendation",
+      "name": "Stella Vega's Recommendation",
+      "type": "document",
+      "subtype": "letter",
+      "description": "A formal letter of recommendation from Governor Stella Vega. Can open many doors throughout the Belt.",
+      "lore": "Despite her controversial status, Stella's word carries significant weight in business and political circles throughout the system.",
+      "icon": "recommendation_icon.png",
+      "sprite": "recommendation_sprite.png",
+      "value": 1000,
+      "weight": 0.1,
+      "stackable": false,
+      "properties": {},
+      "requirements": {
+        "reputation": {
+          "stella_vega": 20
+        }
+      },
+      "effects": []
+    },
+    {
+      "id": "robot_override_module",
+      "name": "Robot Override Module",
+      "type": "tool",
+      "subtype": "tech",
+      "description": "A specialized device that can temporarily override and control certain types of robots, particularly military models.",
+      "lore": "Developed during the Pallas uprising, these modules were key to turning the prison's robot guards against their Earth handlers.",
+      "icon": "override_module_icon.png",
+      "sprite": "override_module_sprite.png",
+      "value": 1500,
+      "weight": 1.0,
+      "stackable": false,
+      "properties": {
+        "success_rate": 75,
+        "duration": 60,
+        "cooldown": 300
+      },
+      "requirements": {
+        "skills": {
+          "hacking": 15
+        }
+      },
+      "effects": []
+    },
+    {
+      "id": "volger_authorization",
+      "name": "Volger Authorization",
+      "type": "document",
+      "subtype": "authorization",
+      "description": "A digital authorization from Volger, the Pallas revolutionary leader. Grants certain privileges in Pallas-controlled territory.",
+      "lore": "Volger rarely extends such trust to outsiders. Those who carry his authorization are treated with respect - and caution - by Pallas operatives.",
+      "icon": "volger_auth_icon.png",
+      "sprite": "volger_auth_sprite.png",
+      "value": 2000,
+      "weight": 0.1,
+      "stackable": false,
+      "properties": {},
+      "requirements": {
+        "reputation": {
+          "pallas": 20
+        }
+      },
+      "effects": [
+        {
+          "type": "shop_discount",
+          "value": 15,
+          "duration": -1,
+          "condition": "faction:pallas"
+        }
+      ]
+    },
+    {
+      "id": "mining_tool_basic",
+      "name": "Basic Mining Tool",
+      "type": "tool",
+      "subtype": "mining",
+      "description": "A standard tool used for extracting ore from asteroids. Can also serve as a makeshift weapon in emergencies.",
+      "lore": "The backbone of Belt mining operations, these tools are designed to be durable, easy to repair, and functional in vacuum conditions.",
+      "icon": "mining_tool_icon.png",
+      "sprite": "mining_tool_sprite.png",
+      "value": 120,
+      "weight": 3.0,
+      "stackable": false,
+      "properties": {
+        "mining_efficiency": 10,
+        "damage": 10,
+        "durability": 100,
+        "max_durability": 100
+      },
+      "requirements": {},
+      "effects": []
+    },
+    {
+      "id": "township_ration_pack",
+      "name": "Township Ration Pack",
+      "type": "consumable",
+      "subtype": "food",
+      "description": "A week's worth of preserved food from Psyche Township's communal stores. Not particularly tasty, but nutritious.",
+      "lore": "As Psyche Township grows, it's beginning to develop its own food production systems, reducing dependency on imports from Mars.",
+      "icon": "ration_pack_icon.png",
+      "sprite": "ration_pack_sprite.png",
+      "value": 75,
+      "weight": 2.0,
+      "stackable": true,
+      "max_stack": 5,
+      "properties": {
+        "portions": 7,
+        "nutrition_per_portion": 10
+      },
+      "requirements": {},
+      "effects": [
+        {
+          "type": "heal",
+          "value": 10,
+          "duration": 0
+        },
+        {
+          "type": "stamina_regen",
+          "value": 5,
+          "duration": 300
+        }
+      ]
+    },
+    {
+      "id": "encryption_device",
+      "name": "Encryption Device",
+      "type": "tool",
+      "subtype": "tech",
+      "description": "A specialized device that encrypts and secures communications, preventing unauthorized interception.",
+      "lore": "These devices became essential tools for journalists and activists during the Martian War, when information control was a key strategy for both sides.",
+      "icon": "encryption_device_icon.png",
+      "sprite": "encryption_device_sprite.png",
+      "value": 350,
+      "weight": 0.5,
+      "stackable": false,
+      "properties": {
+        "encryption_level": 3
+      },
+      "requirements": {
+        "skills": {
+          "hacking": 5
+        }
+      },
+      "effects": []
+    },
+    {
+      "id": "press_pass",
+      "name": "Press Pass",
+      "type": "accessory",
+      "subtype": "badge",
+      "description": "Identifies the bearer as a journalist or media representative, potentially granting access to restricted events or areas.",
+      "lore": "Despite the chaotic political landscape of the Belt, most factions still maintain some respect for press freedom - if only to avoid negative coverage.",
+      "icon": "press_pass_icon.png",
+      "sprite": "press_pass_sprite.png",
+      "value": 200,
+      "weight": 0.1,
+      "stackable": false,
+      "properties": {},
+      "requirements": {},
+      "effects": [
+        {
+          "type": "dialogue_options",
+          "value": "press",
+          "duration": -1
+        }
+      ]
+    },
+    {
+      "id": "rusty_rocket_tab_card",
+      "name": "Rusty Rocket Tab Card",
+      "type": "accessory",
+      "subtype": "membership",
+      "description": "A special card allowing the holder to order drinks and services at The Rusty Rocket free of charge.",
+      "lore": "Ruby rarely issues these cards, reserving them for those who have proven themselves true friends of The Rusty Rocket.",
+      "icon": "tab_card_icon.png",
+      "sprite": "tab_card_sprite.png",
+      "value": 500,
+      "weight": 0.1,
+      "stackable": false,
+      "properties": {},
+      "requirements": {
+        "reputation": {
+          "ruby": 20
+        }
+      },
+      "effects": [
+        {
+          "type": "shop_discount",
+          "value": 100,
+          "duration": -1,
+          "condition": "location:rusty_rocket"
+        }
+      ]
+    },
+    {
+      "id": "ceres_contact_list",
+      "name": "Ceres Contact List",
+      "type": "document",
+      "subtype": "information",
+      "description": "A digital list of useful contacts throughout Ceres, including merchants, fixers, and information brokers.",
+      "lore": "In the Belt, who you know can be more valuable than what you own. This network of contacts represents years of relationship building.",
+      "icon": "contact_list_icon.png",
+      "sprite": "contact_list_sprite.png",
+      "value": 250,
+      "weight": 0.1,
+      "stackable": false,
+      "properties": {},
+      "requirements": {},
+      "effects": [
+        {
+          "type": "shop_discount",
+          "value": 10,
+          "duration": -1,
+          "condition": "location:ceres_port"
+        },
+        {
+          "type": "dialogue_options",
+          "value": "ceres_insider",
+          "duration": -1
+        }
+      ]
+    },
+    {
+      "id": "domestic_robot",
+      "name": "Domestic Robot",
+      "type": "companion",
+      "subtype": "utility",
+      "description": "A friendly household robot designed to perform chores and basic tasks. Features a cartoonish appearance to prevent attachment.",
+      "lore": "Leo's stock includes these popular models, which have become increasingly common in Belt households as prosperity grows.",
+      "icon": "domestic_robot_icon.png",
+      "sprite": "domestic_robot_sprite.png",
+      "value": 800,
+      "weight": 25.0,
+      "stackable": false,
+      "properties": {
+        "skills": ["cleaning", "cooking", "carrying"],
+        "capacity": 20,
+        "battery_life": 72
+      },
+      "requirements": {},
+      "effects": []
+    },
+    {
+      "id": "porter_robot",
+      "name": "Porter Robot",
+      "type": "companion",
+      "subtype": "utility",
+      "description": "A heavy-duty robot designed for cargo handling and transport. Can carry substantial loads over long distances.",
+      "lore": "Essential to Belt commerce, these robots handle much of the manual labor in ports and warehouses, especially in zero-g environments.",
+      "icon": "porter_robot_icon.png",
+      "sprite": "porter_robot_sprite.png",
+      "value": 1200,
+      "weight": 50.0,
+      "stackable": false,
+      "properties": {
+        "skills": ["carrying", "lifting"],
+        "capacity": 100,
+        "battery_life": 48
+      },
+      "requirements": {},
+      "effects": []
+    },
+    {
+      "id": "repair_kit",
+      "name": "Repair Kit",
+      "type": "tool",
+      "subtype": "mechanical",
+      "description": "A comprehensive set of tools for repairing mechanical and electronic devices.",
+      "lore": "In the resource-constrained environment of the Belt, the ability to repair rather than replace equipment is highly valued.",
+      "icon": "repair_kit_icon.png",
+      "sprite": "repair_kit_sprite.png",
+      "value": 200,
+      "weight": 3.0,
+      "stackable": false,
+      "properties": {
+        "repair_efficiency": 20,
+        "uses": 10,
+        "max_uses": 10
+      },
+      "requirements": {
+        "skills": {
+          "engineering": 5
+        }
+      },
+      "effects": []
+    },
+    {
+      "id": "ore_sample",
+      "name": "Psyche Ore Sample",
+      "type": "quest_item",
+      "subtype": "material",
+      "description": "A sample of the rare metal-rich ore from Asteroid Psyche. Valuable to collectors and researchers.",
+      "lore": "Psyche's unique composition of metal and minerals makes it one of the most valuable asteroids in the Belt, explaining why so many factions are interested in controlling it.",
+      "icon": "ore_sample_icon.png",
+      "sprite": "ore_sample_sprite.png",
+      "value": 150,
+      "weight": 1.0,
+      "stackable": true,
+      "max_stack": 10,
+      "properties": {},
+      "requirements": {},
+      "effects": []
+    },
+    {
+      "id": "drink_whiskey",
+      "name": "Martian Whiskey",
+      "type": "consumable",
+      "subtype": "alcohol",
+      "description": "A bottle of premium whiskey distilled on Mars. Has a distinctive smoky flavor from the Martian grain.",
+      "lore": "As Mars developed its agricultural sector, luxury goods like spirits became a point of cultural pride and a valuable export.",
+      "icon": "whiskey_icon.png",
+      "sprite": "whiskey_sprite.png",
+      "value": 100,
+      "weight": 1.0,
+      "stackable": true,
+      "max_stack": 5,
+      "properties": {
+        "portions": 5,
+        "effect_per_portion": "mild_intoxication"
+      },
+      "requirements": {},
+      "effects": [
+        {
+          "type": "charisma_boost",
+          "value": 5,
+          "duration": 300
+        },
+        {
+          "type": "perception_penalty",
+          "value": -5,
+          "duration": 300
+        }
+      ]
+    },
+    {
+      "id": "drink_martian_ale",
+      "name": "Martian Ale",
+      "type": "consumable",
+      "subtype": "alcohol",
+      "description": "A bottle of ale brewed from Martian-grown hops and barley. Slightly stronger than Earth varieties.",
+      "lore": "Brewing became a popular industry during Mars's early colonization, as settlers sought comforts of home and ways to use their agricultural products.",
+      "icon": "ale_icon.png",
+      "sprite": "ale_sprite.png",
+      "value": 50,
+      "weight": 1.0,
+      "stackable": true,
+      "max_stack": 10,
+      "properties": {
+        "portions": 2,
+        "effect_per_portion": "mild_intoxication"
+      },
+      "requirements": {},
+      "effects": [
+        {
+          "type": "stamina_boost",
+          "value": 10,
+          "duration": 200
+        },
+        {
+          "type": "accuracy_penalty",
+          "value": -5,
+          "duration": 200
+        }
+      ]
+    },
+    {
+      "id": "room_standard",
+      "name": "Standard Room Rental",
+      "type": "service",
+      "subtype": "accommodation",
+      "description": "A ticket for one night's stay in a standard room at The Rusty Rocket.",
+      "lore": "The Rusty Rocket's accommodations are known for being clean and secure, if not luxurious - a rare combination in Belt establishments.",
+      "icon": "room_icon.png",
+      "sprite": "room_sprite.png",
+      "value": 75,
+      "weight": 0.1,
+      "stackable": true,
+      "max_stack": 10,
+      "properties": {
+        "rest_quality": "good",
+        "duration": 8
+      },
+      "requirements": {},
+      "effects": [
+        {
+          "type": "rest_bonus",
+          "value": 25,
+          "duration": 0
+        },
+        {
+          "type": "save_game",
+          "value": 1,
+          "duration": 0
+        }
+      ]
+    }
+  ]
+}
+
+      

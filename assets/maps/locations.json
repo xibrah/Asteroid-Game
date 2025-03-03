@@ -1,0 +1,272 @@
+{
+  "locations": [
+    {
+      "id": "psyche_township",
+      "name": "Psyche Township",
+      "type": "settlement",
+      "faction": "neutral",
+      "controlling_character": "stella_vega",
+      "map_file": "psyche_township.csv",
+      "background_image": "psyche_township_bg.png",
+      "music": "psyche_theme.mp3",
+      "description": "A growing settlement carved into a metal crevice in Asteroid Psyche. Originally founded as a mining operation, it has evolved into a self-governing township with its own infrastructure. The township sits beneath Stella's shipyard and station.",
+      "lore": "Psyche Township began when miners and engineers started carving homesteads into a crevice in the asteroid. After a period of turmoil, including sabotage and conflict with Earth forces, Stella Vega declared the township neutral territory and herself as governor. Under Mayor Gus, the township has flourished, developing its own power systems and infrastructure.",
+      "services": ["shop", "repair", "inn", "bar"],
+      "points_of_interest": [
+        {
+          "name": "Mayor's Office",
+          "description": "Gus's office, carved from the asteroid metal and furnished with practical items.",
+          "x": 15,
+          "y": 12
+        },
+        {
+          "name": "Victory Park",
+          "description": "A recently constructed park around which new townhouses are being built.",
+          "x": 20,
+          "y": 20
+        },
+        {
+          "name": "Shipyard Access",
+          "description": "The elevator connecting the township to Stella's shipyard above.",
+          "x": 5,
+          "y": 5
+        },
+        {
+          "name": "Water Processing",
+          "description": "Recently installed water and sewer systems serving the growing township.",
+          "x": 25,
+          "y": 15
+        },
+        {
+          "name": "Leo's Robotics",
+          "description": "A shop specializing in robot repair and sales, run by Leo who moved here from Luna.",
+          "x": 20,
+          "y": 15
+        }
+      ],
+      "danger_level": 1,
+      "available_quests": ["supply_run", "power_plant_expansion", "robot_repair"],
+      "connected_locations": {
+        "shipyard_station": 1,
+        "mining_shaft": 2
+      }
+    },
+    {
+      "id": "shipyard_station",
+      "name": "Psyche Shipyard Station",
+      "type": "space_station",
+      "faction": "neutral",
+      "controlling_character": "stella_vega",
+      "map_file": "shipyard_station.csv",
+      "background_image": "shipyard_bg.png",
+      "music": "station_theme.mp3",
+      "description": "A space station attached to Asteroid Psyche, serving as both a shipyard and Stella Vega's base of operations. The station was reclaimed by Stella after a period of conflict.",
+      "lore": "Originally a Martian mining and shipbuilding operation, the station was briefly taken over by Earth-aligned forces during Stella's abduction by Pallas privateers. Upon her return, with support from Pallas, Stella reclaimed the station and declared it neutral territory. The station now produces ships for various clients while maintaining independence from both Earth and Mars.",
+      "services": ["dock", "refuel", "communications"],
+      "points_of_interest": [
+        {
+          "name": "Command Center",
+          "description": "Stella's operations hub where she manages both the shipyard and governance of Psyche.",
+          "x": 10,
+          "y": 5
+        },
+        {
+          "name": "Construction Bay",
+          "description": "A massive area where ships are assembled, currently building patrol yachts.",
+          "x": 20,
+          "y": 15
+        },
+        {
+          "name": "Plaza",
+          "description": "The social hub of the station, once the site of fierce fighting during Stella's reclamation.",
+          "x": 15,
+          "y": 10
+        },
+        {
+          "name": "Executive Level",
+          "description": "Upper level containing administrative offices and Stella's quarters.",
+          "x": 5,
+          "y": 2
+        }
+      ],
+      "danger_level": 2,
+      "available_quests": ["shipyard_sabotage", "patrol_yacht_delivery"],
+      "connected_locations": {
+        "psyche_township": 1,
+        "space": 0
+      }
+    },
+    {
+      "id": "rusty_rocket",
+      "name": "The Rusty Rocket",
+      "type": "establishment",
+      "faction": "independent",
+      "controlling_character": "ruby",
+      "map_file": "rusty_rocket.csv",
+      "background_image": "rusty_rocket_bg.png",
+      "music": "rusty_rocket_theme.mp3",
+      "description": "The friendliest little bordello on Ceres, run by Ruby, an unsupervised perpetual AI. The establishment was converted from an actual rocket ship to serve as a neutral ground for visitors to Ceres.",
+      "lore": "Founded by Captain 'Lucky' Malone, who converted his ship into this establishment after years of running supplies and passengers between Mars and the Belt. After his death, Ruby, an AI he created to help manage the place, took over operations through a trust arrangement. The Rusty Rocket has served as a safe haven, information hub, and neutral meeting ground through conflicts and political shifts.",
+      "services": ["inn", "bar", "information", "companions"],
+      "points_of_interest": [
+        {
+          "name": "Main Bar",
+          "description": "The central gathering place, featuring the original ship's navigation console repurposed as a bar.",
+          "x": 8,
+          "y": 7
+        },
+        {
+          "name": "Ruby's Station",
+          "description": "A specially designed interface where Ruby manages the establishment.",
+          "x": 8,
+          "y": 5
+        },
+        {
+          "name": "Lounge",
+          "description": "A comfortable area where patrons can enjoy drinks and entertainment.",
+          "x": 15,
+          "y": 10
+        },
+        {
+          "name": "Captain's Quarters",
+          "description": "A locked room that only Ruby can access, rumored to still contain Captain Malone's remains.",
+          "x": 5,
+          "y": 2
+        }
+      ],
+      "danger_level": 2,
+      "available_quests": ["find_zack", "the_truth_behind_news", "lost_companion"],
+      "connected_locations": {
+        "ceres_port": 1
+      }
+    },
+    {
+      "id": "pallas_wardenhouse",
+      "name": "Pallas Wardenhouse",
+      "type": "headquarters",
+      "faction": "pallas",
+      "controlling_character": "volger",
+      "map_file": "wardenhouse.csv",
+      "background_image": "wardenhouse_bg.png",
+      "music": "pallas_theme.mp3",
+      "description": "The palace built for the warden of Pallas prison, now serving as the headquarters for Volger, the syndicalist revolutionary leader. A symbol of the Pallas rebellion's success.",
+      "lore": "Originally built as the residence for Earth's prison warden, this structure became the seat of power for the syndicalist revolution after the prison break and subsequent uprising. Volger, a former Earth intelligence officer who was imprisoned during the Martian War, now conducts Pallas's operations from here, including the management of their privateer fleet.",
+      "services": ["black_market", "information", "recruitment"],
+      "points_of_interest": [
+        {
+          "name": "Volger's Office",
+          "description": "The command center of Pallas operations, formerly the warden's private quarters.",
+          "x": 10,
+          "y": 5
+        },
+        {
+          "name": "Robot Guard Room",
+          "description": "Where the remaining robot soldiers from the outlawed fleet are stationed.",
+          "x": 15,
+          "y": 8
+        },
+        {
+          "name": "Detention Area",
+          "description": "Cells for holding prisoners or guests of questionable status, where Stella was held captive.",
+          "x": 20,
+          "y": 15
+        }
+      ],
+      "danger_level": 8,
+      "available_quests": ["escape_pallas", "robot_fleet_secrets"],
+      "connected_locations": {
+        "pallas_port": 1,
+        "the_core_museum": 2
+      }
+    },
+    {
+      "id": "the_core_museum",
+      "name": "The Core Museum",
+      "type": "museum",
+      "faction": "pallas",
+      "controlling_character": "museum_curator",
+      "map_file": "core_museum.csv",
+      "background_image": "core_museum_bg.png",
+      "music": "solemn_theme.mp3",
+      "description": "Formerly a classified detention facility known as 'The Core,' now repurposed as a museum and memorial documenting Earth's controversial operations on Pallas.",
+      "lore": "The Core was a black site detention facility operated by Earth, housing political dissidents and those deemed threats. Its operation, involving outlawed robotic soldiers and alleged unethical experiments, fueled local resentment and eventually sparked the Pallas revolution. Now, the facility serves as a museum showing multiple perspectives on Pallas's history.",
+      "services": ["information", "tours"],
+      "points_of_interest": [
+        {
+          "name": "Main Exhibition Hall",
+          "description": "Documents the history of Pallas from colonization through revolution.",
+          "x": 10,
+          "y": 10
+        },
+        {
+          "name": "Cell Block Exhibit",
+          "description": "Preserved detention cells showing the conditions of political prisoners.",
+          "x": 15,
+          "y": 15
+        },
+        {
+          "name": "Earth Intelligence Wing",
+          "description": "Reveals documents about Earth's intelligence operations on Pallas.",
+          "x": 20,
+          "y": 5
+        },
+        {
+          "name": "Robot Soldier Display",
+          "description": "Exhibits decommissioned robot soldiers like #27, explaining their controversial history.",
+          "x": 25,
+          "y": 10
+        }
+      ],
+      "danger_level": 3,
+      "available_quests": ["hidden_history", "intelligence_cache"],
+      "connected_locations": {
+        "pallas_wardenhouse": 2
+      }
+    },
+    {
+      "id": "ceres_port",
+      "name": "Ceres Port",
+      "type": "spaceport",
+      "faction": "earth",
+      "controlling_character": "commander_davis",
+      "map_file": "ceres_port.csv",
+      "background_image": "ceres_port_bg.png",
+      "music": "port_bustle.mp3",
+      "description": "Earth's main foothold in the Belt, a bustling port dominated by automated systems and military presence.",
+      "lore": "Ceres has long been Earth's surest footing in the Belt, serving as a major hub for shipments heading to the inner system. The port is characterized by its high level of automation, with robots handling much of the labor while human presence is largely limited to merchants and military personnel.",
+      "services": ["trade", "repair", "refuel", "military"],
+      "points_of_interest": [
+        {
+          "name": "Military Section",
+          "description": "Heavily guarded Earth garrison headquarters.",
+          "x": 10,
+          "y": 5
+        },
+        {
+          "name": "Officers Club",
+          "description": "Where Commander Davis meets with visitors like Stella.",
+          "x": 15,
+          "y": 10
+        },
+        {
+          "name": "Commercial Docks",
+          "description": "Busy area where merchants and mechanics handle shipping and repairs.",
+          "x": 20,
+          "y": 15
+        },
+        {
+          "name": "Automated Loading Zone",
+          "description": "Vast area where robot laborers handle cargo without human supervision.",
+          "x": 25,
+          "y": 20
+        }
+      ],
+      "danger_level": 4,
+      "available_quests": ["navy_contract_race", "smuggling_operation"],
+      "connected_locations": {
+        "rusty_rocket": 1,
+        "space": 0
+      }
+    }
+  ]
+}

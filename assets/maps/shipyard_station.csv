@@ -1,0 +1,50 @@
+# Psyche Shipyard Station Map
+# Legend:
+# W = Wall/Bulkhead
+# F = Floor
+# D = Door/Airlock
+# T = Table
+# C = Chair
+# M = Machinery/Equipment
+# S = Storage
+# V = Viewport/Window
+# H = Hangar/Drydock
+# E = Exit (to another area)
+# @ = Player starting position
+# 1-9 = NPC positions (see bottom for references)
+
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHW
+WHHHHHHHHHHHHHMMMMMMHHHHHHHHHHHHHHHW
+WHHHHHHHHHHHHMM    MMHHHHHHHHHHHHHW
+WHHHHHHHHHHHMM      MMHHHHHHHHHHHHW
+WMMMMMMMDMMMM  MMMM  MMMMDMMMMMMMMW
+WM     M     MM    MM     M       W
+WM     M                  D       W
+WM  MMMM                  MMMMM   W
+WM  M                         M   W
+WM  M            @            M   W
+WM  M                         M   W
+WM  M                   3     M   W
+WM  MMMMMMM             MMMMMMM   W
+WM        M             M         W
+WM        M             M         W
+WMMMDMMMMMM             MMMMMMMDMMW
+WM                               MW
+WM                               MW
+WM           1  2                MW
+WM  MMMMMM                 MMMM  MW
+WM  M    M                 M  M  MW
+WM  MMMMDM                 M  M  MW
+WM  M    M                 M  M  MW
+WM  MMMMMM                 MMMM  MW
+WM                               MW
+WMVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMW
+WWWWWWWWWWWWWWWWWWWWEEWWWWWWWWWWWWWW
+
+# NPC Reference:
+# 1 = Stella Vega (Station Commander)
+# 2 = Robot #27 (Stella's guard)
+# 3 = Asul (Operations Manager)
+# 4 = Jeremy (If present in story)
+# 5 = Earth Military Representative

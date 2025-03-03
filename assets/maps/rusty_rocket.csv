@@ -1,0 +1,47 @@
+# The Rusty Rocket Map
+# Legend:
+# W = Wall
+# F = Floor
+# D = Door
+# T = Table
+# C = Chair
+# B = Bar counter
+# S = Storage
+# E = Exit (to another area)
+# @ = Player starting position
+# 1-9 = NPC positions (see bottom for references)
+
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WSSSWW      BBBBB      WWWWWWWWWWWWW
+WSSSWW      B   B      WWBBBBBBBBBWW
+WSSSWW    1 B   B      WWWWWWWWWDWWW
+WWWDWW      BBBBB        WWWWWW   WW
+WF              F        WWWWWW   WW
+WF  TTTT        F  TTTT  WWWWWW   WW
+WF  CCCC        F  CCCC  WWWWWW   WW
+WF              F        WWWW     WW
+WF  TTTT        F  TTTT  WWWW  B  WW
+WF  CCCC        F  CCCC  WWWW  B  WW
+WF              F            B  B  W
+WF  TTTT        F        BBB    B  W
+WF  CCCC        F  @    2    BBBBBEW
+WF              F        BBB    B  W
+WF  TTTT        F            B  B  W
+WF  CCCC        F  TTTT  WWWW  B  WW
+WF              F  CCCC  WWWW  B  WW
+WF              F        WWWW     WW
+WF  TTTT        F  TTTT  WWWWWW   WW
+WF  CCCC        F  CCCC  WWWWWW   WW
+WF              F        WWWWWW   WW
+WWWWWWWWWDWWWWWWWWWWWWWWWWWWWWWW   WW
+WWWWWWSSSSSSSSSSSSSSSSSSWWWWWWW   WW
+WWWWWWSSSSSSSSSSSSSSSSSSWWWWWWW   WW
+WWWWWWSSSSSSSSSSSSSSSSSSWWWWWWWWWWWW
+WWWWWWSSSSSSSSSSSSSSSSSSWWWWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+
+# NPC Reference:
+# 1 = Ruby (The proprietor)
+# 2 = CV (The journalist)
+# 3 = Zack (The barback - if quest is complete)
+# 4 = Lounge Singer

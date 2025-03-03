@@ -56,6 +56,7 @@ class GameState:
     INVENTORY = 5
     GAME_OVER = 6
     SPACE_TRAVEL = 7
+    TRAVEL_MENU = 8
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -120,56 +121,141 @@ class Game:
         self.dialogue_index = 0
         
     def handle_events(self):
+        """Process game events"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
-                
+        
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    if self.state == GameState.MAIN_MENU:
+                    if self.game_state == GameState.MAIN_MENU:
                         return False
+                    elif self.game_state == GameState.TRAVEL_MENU:
+                        self.game_state = GameState.OVERWORLD
                     else:
-                        self.state = GameState.MAIN_MENU
-                        
-                if self.state == GameState.DIALOGUE:
-                    if event.key == pygame.K_SPACE:
-                        self.dialogue_index += 1
-                        if self.dialogue_index >= len(self.current_dialogue):
-                            self.state = GameState.OVERWORLD
-                            self.current_dialogue = None
-                            self.dialogue_index = 0
-                
-                if event.key == pygame.K_e:
-                    # Check for NPC interaction
-                    for npc in self.npcs:
-                        if pygame.sprite.collide_rect(self.player, npc):
-                            self.state = GameState.DIALOGUE
-                            self.current_dialogue = npc.dialogue
-                            self.dialogue_speaker = npc.name
-                            self.dialogue_index = 0
-                            
-                if self.state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
-                    self.state = GameState.OVERWORLD
+                        self.game_state = GameState.MAIN_MENU
+            
+                if event.key == pygame.K_i:
+                    self.show_inventory = not self.show_inventory
+            
+                if event.key == pygame.K_m:
+                    self.show_map = not self.show_map
+            
+                if event.key == pygame.K_q:
+                    self.show_quest_log = not self.show_quest_log
+            
+                if event.key == pygame.K_t and self.game_state == GameState.OVERWORLD:
+                    # 'T' key to manually show travel menu (for testing)
+                    self.show_travel_options()
+            
+                if self.dialogue_manager.is_dialogue_active():
+                    self.dialogue_manager.handle_key(event.key)
+            
+                if self.game_state == GameState.TRAVEL_MENU:
+                    self.handle_travel_menu_events(event)
+            
+                if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
+                    self.game_state = GameState.OVERWORLD
         
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Left click
+                    if self.dialogue_manager.is_dialogue_active():
+                        self.dialogue_manager.handle_click(event.pos)
+                    elif self.game_state == GameState.OVERWORLD:
+                        # Check for NPC interaction if we're close enough
+                        for npc in self.npcs:
+                            if pygame.sprite.collide_rect(self.player, npc):
+                                self.dialogue_manager.start_dialogue(npc, self.player)
+                                self.game_state = GameState.DIALOGUE
+                                break
+    
         return True
     
-    def update(self):
-        if self.state == GameState.OVERWORLD:
+    def update(self, dt):
+        """Update game state"""
+        if self.game_state == GameState.OVERWORLD:
+            # Update player
             keys = pygame.key.get_pressed()
-            self.player.update(keys)
+            self.player.update(keys, dt, self.current_level["walls"] if self.current_level else None)
+        
+            # Update NPCs
+            self.npcs.update(dt, self.player)
+        
+            # Check for exit collision
+            self.check_exit_collision()
+        
+            # Check for NPC interaction via E key
+            if keys[pygame.K_e]:
+                for npc in self.npcs:
+                    if pygame.sprite.collide_rect(self.player, npc):
+                        self.dialogue_manager.start_dialogue(npc, self.player)
+                        self.game_state = GameState.DIALOGUE
+                        break
+    
+        elif self.game_state == GameState.DIALOGUE:
+            # Check if dialogue has ended
+            if not self.dialogue_manager.is_dialogue_active():
+                self.game_state = GameState.OVERWORLD
+    
+        elif self.game_state == GameState.SPACE_TRAVEL:
+            # Update space travel
+            self.space_travel.update(dt)
+        
+            if self.space_travel.travel_state == "idle":
+                self.game_state = GameState.OVERWORLD
     
     def draw(self):
+        """Render the game"""
         screen.fill(SPACE_BG)
-        
-        if self.state == GameState.MAIN_MENU:
+    
+        if self.game_state == GameState.MAIN_MENU:
             self.draw_main_menu()
-        elif self.state == GameState.OVERWORLD:
-            self.all_sprites.draw(screen)
-            self.draw_ui()
-        elif self.state == GameState.DIALOGUE:
-            self.all_sprites.draw(screen)
-            self.draw_dialogue()
-            
+    
+        elif self.game_state == GameState.OVERWORLD or self.game_state == GameState.DIALOGUE:
+            # Draw level
+            if self.current_level:
+                self.current_level["all_sprites"].draw(screen)
+        
+            # Draw NPCs
+            self.npcs.draw(screen)
+        
+            # Draw player
+            screen.blit(self.player.image, self.player.rect)
+        
+            # Draw dialogue if active
+            if self.dialogue_manager.is_dialogue_active():
+                self.dialogue_manager.draw(screen)
+        
+            # Draw UI elements if not in dialogue
+            if self.game_state != GameState.DIALOGUE:
+                self.draw_ui()
+        
+            # Draw inventory if shown
+            if self.show_inventory:
+                self.draw_inventory()
+        
+            # Draw map if shown
+            if self.show_map:
+                self.draw_map()
+        
+            # Draw quest log if shown
+            if self.show_quest_log:
+                self.draw_quest_log()
+    
+        elif self.game_state == GameState.SPACE_TRAVEL:
+            # Draw space travel screen
+            self.space_travel.draw(screen)
+    
+        elif self.game_state == GameState.TRAVEL_MENU:
+            # Draw the background
+            if self.current_level:
+                self.current_level["all_sprites"].draw(screen)
+            self.npcs.draw(screen)
+            screen.blit(self.player.image, self.player.rect)
+        
+            # Draw the travel menu
+            self.draw_travel_menu()
+    
         pygame.display.flip()
     
     def draw_main_menu(self):
@@ -190,18 +276,40 @@ class Game:
         screen.blit(quit_text, quit_rect)
     
     def draw_ui(self):
+        """Draw UI elements"""
         font = pygame.font.Font(None, 24)
-        health_text = font.render(f"Health: {self.player.health}", True, WHITE)
-        money_text = font.render(f"Credits: {self.player.money}", True, WHITE)
-        
+    
+        # Health bar
+        health_text = font.render(f"Health: {self.player.health}/{self.player.max_health}", True, WHITE)
         screen.blit(health_text, (10, 10))
+    
+        # Credits
+        money_text = font.render(f"Credits: {self.player.credits}", True, WHITE)
         screen.blit(money_text, (10, 40))
-        
-        # Interaction prompt
-        for npc in self.npcs:
-            if pygame.sprite.collide_rect(self.player, npc):
-                prompt = font.render("Press E to talk", True, WHITE)
-                screen.blit(prompt, (SCREEN_WIDTH//2 - prompt.get_width()//2, SCREEN_HEIGHT - 50))
+    
+        # Current location
+        location_name = self.current_level['name'].replace("_", " ").title()
+        location_text = font.render(f"Location: {location_name}", True, WHITE)
+        screen.blit(location_text, (SCREEN_WIDTH - location_text.get_width() - 10, 10))
+    
+        # Controls hint
+        controls = font.render("I: Inventory | M: Map | Q: Quests | E: Interact | T: Travel", True, WHITE)
+        screen.blit(controls, (SCREEN_WIDTH//2 - controls.get_width()//2, SCREEN_HEIGHT - 30))
+    
+        # Exit hint - only show if player is near an exit
+        is_near_exit = False
+        exits = [obj for obj in self.current_level["objects"] if hasattr(obj, 'is_exit')]
+    
+        for exit_tile in exits:
+            distance = ((self.player.rect.centerx - exit_tile.rect.centerx)**2 + 
+                      (self.player.rect.centery - exit_tile.rect.centery)**2)**0.5
+            if distance < TILE_SIZE * 3:  # Within 3 tiles
+                is_near_exit = True
+                break
+    
+        if is_near_exit:
+            exit_text = font.render("Press T to travel to a new location", True, (0, 255, 0))
+            screen.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 60))
     
     def draw_dialogue(self):
         if not self.current_dialogue:

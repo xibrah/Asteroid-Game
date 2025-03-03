@@ -1,0 +1,51 @@
+# Psyche Township Map
+# Legend:
+# W = Wall
+# F = Floor
+# D = Door
+# T = Table
+# C = Chair
+# B = Bed
+# S = Storage
+# E = Exit (to another area)
+# @ = Player starting position
+# 1-9 = NPC positions (see bottom for references)
+
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WS  FF            FFF     WWWFFFFFEW
+WS  FF            FFF     WWWFFFFFEW
+WSS FF    TTTT    FFF     WWWWDDWWWW
+WSS FF    CCCC    FFF     FFFFFFFF1W
+WSS FFFFF       FFFFFFFFFFFFFFFFFFFW
+WWWWWDDWW       WWWWWWWFFFTTTFFFTTFW
+WWFFFFFFF       FFFFFF2FFFCCCFFFCCFW
+WWFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFW
+WWWWWDDWWWWWFFFFFFFFFFFFFFFFFFFFFFFW
+W     FFF        FFFWWWWWWDDWWWWWWWW
+W     FFF   @    FFFW    3FFF     W
+W     FFF        FFFW     FFF     W
+WWWWWDDWWWWWWWWWDDWWW     FFF     W
+WFFFFF       FFFFFF4W     FFF     W
+WFFFFF TTTT  FFFFFFFW     FFF     W
+WFFFFF CCCC  FFFFFFFW     FFF     W
+WFFFFF       FFFFFFFW     FFF     W
+WFFFFF TTTT  FFFFFFFW     FFF     W
+WFFFFF CCCC  FFFFFFFD     FFF     W
+WFFFFF       FFFFFFFD     FFF     W
+WWWWWDDWWWWWWWWWWWWWW     FFF     W
+W5    FFF     6FFFFFWWWWWWDDWWWWWWW
+W     FFF      FFFFFW     FFF     W
+W     FFF      FFFFFW     FFF     W
+W     FFF      FFFFFW     FFF     W
+W     FFF      FFFFFW     FFF     W
+W     FFF      FFFFEW     FFF7    W
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+
+# NPC Reference:
+# 1 = Stella Vega (Governor's Office)
+# 2 = Robot #27 (Guards Stella)
+# 3 = Gus (Mayor's Office)
+# 4 = Township Merchant
+# 5 = Mining Coordinator
+# 6 = Bartender
+# 7 = Leo (Robotics Shop)

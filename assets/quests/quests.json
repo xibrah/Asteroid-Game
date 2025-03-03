@@ -1,0 +1,611 @@
+{
+  "quests": [
+    {
+      "id": "maintain_neutrality",
+      "title": "Balancing Act",
+      "giver": "stella_vega",
+      "type": "main_story",
+      "description": "Help Stella maintain Psyche's neutrality by navigating a diplomatic crisis between Earth and Mars representatives.",
+      "long_description": "As Governor of Psyche, Stella walks a fine line between Earth and Mars interests. With delegations from both factions arriving at the station, she needs your assistance to prevent any incidents that could compromise Psyche's independent status.",
+      "objectives": [
+        {
+          "description": "Meet with Earth representative Major Butler",
+          "target": 1,
+          "location": "shipyard_station",
+          "type": "talk"
+        },
+        {
+          "description": "Meet with Martian representative Asul",
+          "target": 1,
+          "location": "shipyard_station",
+          "type": "talk"
+        },
+        {
+          "description": "Investigate suspicious activity in the cargo bay",
+          "target": 1,
+          "location": "shipyard_station",
+          "type": "inspect"
+        },
+        {
+          "description": "Neutralize the potential conflict",
+          "target": 1,
+          "location": "shipyard_station",
+          "type": "decision"
+        }
+      ],
+      "rewards": {
+        "credits": 300,
+        "xp": 150,
+        "items": ["access_card_executive", "neutral_diplomat_badge"],
+        "reputation": {
+          "stella_vega": 15,
+          "earth": 5,
+          "mars": 5
+        }
+      },
+      "failure_penalties": {
+        "reputation": {
+          "stella_vega": -10,
+          "earth": -15,
+          "mars": -15
+        }
+      },
+      "prerequisites": [],
+      "following_quests": ["shipyard_sabotage"],
+      "dialogue": {
+        "offer": [
+          {
+            "speaker": "stella_vega",
+            "text": "I need someone I can trust for a delicate matter. Earth and Mars are both sending representatives, and I suspect at least one has ulterior motives."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "I need you to meet with both delegates and keep your ears open. If you notice anything suspicious, investigate further, but don't show your hand too early."
+          },
+          {
+            "speaker": "player",
+            "text": "What exactly am I looking for?"
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "Anything that might threaten Psyche's neutrality. Sabotage, espionage, attempts to gain leverage over us. Psyche's independence is what keeps us safe."
+          }
+        ],
+        "in_progress": [
+          {
+            "speaker": "stella_vega",
+            "text": "Have you spoken with both representatives yet? Time is of the essence."
+          }
+        ],
+        "completion": [
+          {
+            "speaker": "stella_vega",
+            "text": "Excellent work. Thanks to you, we've maintained our position without alienating either side. That's the kind of diplomacy Psyche needs to survive."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "Here's your payment, plus something extra - an executive access card. This will grant you entry to restricted areas of the station. I have a feeling I'll need your help again soon."
+          }
+        ],
+        "failure": [
+          {
+            "speaker": "stella_vega",
+            "text": "This is exactly what I was afraid would happen. Now both sides are suspicious of us, and our position is more precarious than ever."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "I'll do what I can to repair the damage, but it won't be easy. Next time, exercise more caution."
+          }
+        ]
+      }
+    },
+    {
+      "id": "shipyard_sabotage",
+      "title": "Internal Threats",
+      "giver": "stella_vega",
+      "type": "main_story",
+      "description": "Investigate suspected sabotage in Stella's shipyard affecting the Earth Republic's patrol yacht order.",
+      "long_description": "Someone is sabotaging the patrol yacht construction at Stella's shipyard, threatening both her business and Psyche's precarious political position. Earth suspects intentional delays, but Stella believes it's someone trying to undermine her authority.",
+      "objectives": [
+        {
+          "description": "Examine the damaged components in Construction Bay 3",
+          "target": 1,
+          "location": "shipyard_station",
+          "type": "inspect"
+        },
+        {
+          "description": "Interview three shipyard workers",
+          "target": 3,
+          "location": "shipyard_station",
+          "type": "talk"
+        },
+        {
+          "description": "Review security footage in the system",
+          "target": 1,
+          "location": "shipyard_station",
+          "type": "hack"
+        },
+        {
+          "description": "Confront the saboteur",
+          "target": 1,
+          "location": "shipyard_station",
+          "type": "combat"
+        }
+      ],
+      "rewards": {
+        "credits": 500,
+        "xp": 200,
+        "items": ["ship_component_advanced", "stella_recommendation"],
+        "reputation": {
+          "stella_vega": 20,
+          "earth": 10
+        }
+      },
+      "failure_penalties": {
+        "reputation": {
+          "stella_vega": -15,
+          "earth": -25
+        }
+      },
+      "prerequisites": ["maintain_neutrality"],
+      "following_quests": ["robot_fleet_secrets"],
+      "dialogue": {
+        "offer": [
+          {
+            "speaker": "stella_vega",
+            "text": "We have a serious problem. Someone's been sabotaging our work on the Earth Republic patrol yachts."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "If we don't deliver on time, Earth will use it as an excuse to increase their presence here. I need you to find out who's behind this."
+          },
+          {
+            "speaker": "player",
+            "text": "Do you have any suspects?"
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "It could be Mars loyalists who don't approve of my contracts with Earth. Or Earth agents trying to create a pretext for intervention. Or even Pallas, trying to disrupt all sides."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "Start in Construction Bay 3 - that's where we found the latest sabotage. Talk to the workers, check the security systems. I've authorized your access."
+          }
+        ],
+        "in_progress": [
+          {
+            "speaker": "stella_vega",
+            "text": "Any progress on identifying our saboteur? The delivery deadline is approaching fast."
+          }
+        ],
+        "completion": [
+          {
+            "speaker": "stella_vega",
+            "text": "I had my suspicions about Jeremy, but I didn't want to believe it. His loyalty to Mars blinded him to the bigger picture."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "Thanks to you, we can get back on schedule and deliver the yachts on time. Earth will have no excuse to interfere with our operations."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "I won't forget this. Here's your payment, plus an advanced ship component from our inventory. And my personal recommendation, which carries weight throughout the Belt."
+          }
+        ],
+        "failure": [
+          {
+            "speaker": "stella_vega",
+            "text": "This is a disaster. The sabotage continues, and Earth is already making noise about sending 'technical advisors' to ensure their ships are built correctly."
+          },
+          {
+            "speaker": "stella_vega",
+            "text": "We both know those 'advisors' will just be spies and military personnel. I needed this solved... now I'll have to find another way to maintain our independence."
+          }
+        ]
+      }
+    },
+    {
+      "id": "supply_run",
+      "title": "Supply Run",
+      "giver": "gus",
+      "type": "side_quest",
+      "description": "Help Mayor Gus collect essential supplies for Psyche Township's growing population.",
+      "long_description": "Psyche Township is expanding rapidly, and resources are stretched thin. Mayor Gus needs someone to collect supply crates that were dropped in the outer mining tunnels during the recent conflicts. The tunnels haven't been fully secured yet, making this a potentially dangerous mission.",
+      "objectives": [
+        {
+          "description": "Find 5 supply crates in the mining tunnels",
+          "target": 5,
+          "location": "mining_shaft",
+          "type": "collect"
+        },
+        {
+          "description": "Deliver the supplies to Mayor Gus",
+          "target": 1,
+          "location": "psyche_township",
+          "type": "deliver"
+        }
+      ],
+      "rewards": {
+        "credits": 150,
+        "xp": 75,
+        "items": ["mining_tool_basic", "township_ration_pack"],
+        "reputation": {
+          "psyche_township": 10,
+          "gus": 15
+        }
+      },
+      "failure_penalties": {},
+      "prerequisites": [],
+      "following_quests": ["power_plant_expansion"],
+      "dialogue": {
+        "offer": [
+          {
+            "speaker": "gus",
+            "text": "Our township is growing faster than we can support it. We've got families moving in, but our supply lines are still being established."
+          },
+          {
+            "speaker": "gus",
+            "text": "We had a shipment of essential supplies - medical equipment, water filters, processor chips - that got scattered in the mining tunnels during the conflict with Earth's garrison."
+          },
+          {
+            "speaker": "player",
+            "text": "Why haven't you retrieved them already?"
+          },
+          {
+            "speaker": "gus",
+            "text": "Those tunnels haven't been properly secured yet. There could be... well, I don't know what could be down there. That's why I need someone capable like you."
+          }
+        ],
+        "in_progress": [
+          {
+            "speaker": "gus",
+            "text": "How's the supply run going? Those materials are crucial for our expansion projects."
+          }
+        ],
+        "completion": [
+          {
+            "speaker": "gus",
+            "text": "These supplies will make a real difference to our people. The water filters alone will improve quality of life for dozens of families."
+          },
+          {
+            "speaker": "gus",
+            "text": "You've proven yourself reliable. I could use your help with a bigger project soon - our power plant needs expansion. Think about it."
+          },
+          {
+            "speaker": "gus",
+            "text": "For now, please accept this payment and equipment. And know that the people of Psyche Township won't forget your help."
+          }
+        ],
+        "failure": []
+      }
+    },
+    {
+      "id": "the_truth_behind_news",
+      "title": "The Truth Behind the News",
+      "giver": "cv",
+      "type": "side_quest",
+      "description": "Help CV gather information for his exposé on Earth's propaganda about Pallas.",
+      "long_description": "The perpetual journalist CV is working on an exposé about how Earth's official news channels misrepresent the situation in the Belt, particularly regarding Pallas. He needs someone to gather evidence from the Earth garrison on Ceres, which requires discretion and potentially some risk.",
+      "objectives": [
+        {
+          "description": "Record conversation at the Officers Club",
+          "target": 1,
+          "location": "ceres_port",
+          "type": "espionage"
+        },
+        {
+          "description": "Copy data from a military terminal",
+          "target": 1,
+          "location": "ceres_port",
+          "type": "hack"
+        },
+        {
+          "description": "Photograph classified Earth documents",
+          "target": 1,
+          "location": "ceres_port",
+          "type": "espionage"
+        },
+        {
+          "description": "Return the evidence to CV",
+          "target": 1,
+          "location": "rusty_rocket",
+          "type": "deliver"
+        }
+      ],
+      "rewards": {
+        "credits": 300,
+        "xp": 150,
+        "items": ["encryption_device", "press_pass"],
+        "reputation": {
+          "cv": 20,
+          "pallas": 10,
+          "earth": -15
+        }
+      },
+      "failure_penalties": {
+        "reputation": {
+          "cv": -10,
+          "earth": -25
+        }
+      },
+      "prerequisites": [],
+      "following_quests": ["find_missing_data"],
+      "dialogue": {
+        "offer": [
+          {
+            "speaker": "cv",
+            "text": "Earth's been spinning tales about Pallas again. Calling them all pirates and terrorists, when the truth is far more complex."
+          },
+          {
+            "speaker": "cv",
+            "text": "I'm working on an exposé that will show how Earth's propaganda machine works, but I need hard evidence. That's where you come in."
+          },
+          {
+            "speaker": "player",
+            "text": "What kind of evidence are you looking for?"
+          },
+          {
+            "speaker": "cv",
+            "text": "Recordings of officers speaking candidly. Internal documents that contradict public statements. Proof that Earth knows the true situation but chooses to misrepresent it."
+          },
+          {
+            "speaker": "cv",
+            "text": "It's risky work - if you're caught, Earth won't be pleased. But the truth deserves to be told, don't you think?"
+          }
+        ],
+        "in_progress": [
+          {
+            "speaker": "cv",
+            "text": "Remember, we need concrete evidence. Rumors and hearsay won't cut it for my reporting standards."
+          }
+        ],
+        "completion": [
+          {
+            "speaker": "cv",
+            "text": "This is excellent material. That conversation between Commander Davis and Major Butler is particularly damning."
+          },
+          {
+            "speaker": "cv",
+            "text": "I'll need time to compile this into a proper exposé, but it will change how people see Earth's 'peacekeeping' efforts in the Belt."
+          },
+          {
+            "speaker": "cv",
+            "text": "You've done a service to truth today. Here's your payment, plus an encryption device to keep your communications private. And this press pass might open some doors for you in the future."
+          }
+        ],
+        "failure": [
+          {
+            "speaker": "cv",
+            "text": "Earth's security is tighter than I anticipated. It's disappointing, but I understand why you couldn't get what we needed."
+          },
+          {
+            "speaker": "cv",
+            "text": "I'll keep looking for another angle. The truth will come out eventually, it always does."
+          }
+        ]
+      }
+    },
+    {
+      "id": "robot_fleet_secrets",
+      "title": "The Forbidden Fleet",
+      "giver": "robot_27",
+      "type": "main_story",
+      "description": "Discover the secrets of the outlawed robot fleet that #27 belongs to, hidden somewhere on Pallas.",
+      "long_description": "After noticing unusual behavior from #27, you discover that the robot is part of a larger fleet of military robots from the Martian War, now hidden on Pallas. The fleet's existence violates the Hiroshima Convention of 2117, and multiple factions would kill to control or destroy these robots.",
+      "objectives": [
+        {
+          "description": "Decrypt #27's secure memory module",
+          "target": 1,
+          "location": "psyche_township",
+          "type": "hack"
+        },
+        {
+          "description": "Travel to Pallas and find the fleet storage location",
+          "target": 1,
+          "location": "pallas_wardenhouse",
+          "type": "travel"
+        },
+        {
+          "description": "Gain access to the secured bunker",
+          "target": 1,
+          "location": "pallas_wardenhouse",
+          "type": "infiltrate"
+        },
+        {
+          "description": "Make a critical decision about the robot fleet",
+          "target": 1,
+          "location": "pallas_wardenhouse",
+          "type": "decision"
+        }
+      ],
+      "rewards": {
+        "credits": 1000,
+        "xp": 500,
+        "items": ["robot_override_module", "volger_authorization"],
+        "reputation": {
+          "stella_vega": 25,
+          "pallas": 20,
+          "earth": -30,
+          "mars": -20
+        }
+      },
+      "failure_penalties": {
+        "reputation": {
+          "stella_vega": -20,
+          "pallas": -30
+        }
+      },
+      "prerequisites": ["shipyard_sabotage"],
+      "following_quests": ["escape_pallas"],
+      "dialogue": {
+        "offer": [
+          {
+            "speaker": "robot_27",
+            "text": "Anomalous behavior detected in primary directive protocols. This unit requires assistance to resolve conflicting commands."
+          },
+          {
+            "speaker": "player",
+            "text": "What kind of assistance do you need?"
+          },
+          {
+            "speaker": "robot_27",
+            "text": "This unit's secure memory contains encrypted data regarding the location and status of the remaining 65 units from this production series."
+          },
+          {
+            "speaker": "robot_27",
+            "text": "Recent communications indicate potential compromise of the storage facility. This unit cannot investigate directly due to VIP protection protocols for Stella Vega."
+          },
+          {
+            "speaker": "robot_27",
+            "text": "Request: Decrypt this unit's secure memory module to obtain location data. Investigate status of remaining units on Pallas. Exercise extreme caution."
+          }
+        ],
+        "in_progress": [
+          {
+            "speaker": "robot_27",
+            "text": "Status inquiry: Have you located the fleet secure storage facility? The security of this information is imperative to multiple faction stability matrices."
+          }
+        ],
+        "completion": [
+          {
+            "speaker": "robot_27",
+            "text": "Analysis: Your decision regarding the fleet was optimal given current political variables."
+          },
+          {
+            "speaker": "robot_27",
+            "text": "This unit calculates a 78% reduction in immediate existential threat to Stella Vega and Psyche Township as a result of your actions."
+          },
+          {
+            "speaker": "robot_27",
+            "text": "Recommendation: Accept these items as compensation. The override module will provide limited control capabilities over similar robotic units encountered in future scenarios."
+          }
+        ],
+        "failure": [
+          {
+            "speaker": "robot_27",
+            "text": "Critical failure detected. Fleet security compromised. Recalculating threat metrics."
+          },
+          {
+            "speaker": "robot_27",
+            "text": "New protection protocols initiated. This unit must now allocate 43% more processing power to Stella Vega's security concerns."
+          },
+          {
+            "speaker": "robot_27",
+            "text": "Recommendation: Avoid Pallas space until this situation is resolved."
+          }
+        ]
+      }
+    },
+    {
+      "id": "find_zack",
+      "title": "The Runaway Barback",
+      "giver": "ruby",
+      "type": "side_quest",
+      "description": "Help Ruby find Zack, a young Martian who recently started working at The Rusty Rocket but has gone missing.",
+      "long_description": "Zack, a young man who escaped indentured service on Mars, has been working as a barback at The Rusty Rocket. After receiving threatening messages from his former Martian employers, he's disappeared. Ruby is concerned for his safety and wants you to find him before the Martian debt collectors do.",
+      "objectives": [
+        {
+          "description": "Search Zack's quarters for clues",
+          "target": 1,
+          "location": "rusty_rocket",
+          "type": "inspect"
+        },
+        {
+          "description": "Ask around Ceres Port for information",
+          "target": 3,
+          "location": "ceres_port",
+          "type": "talk"
+        },
+        {
+          "description": "Track Zack to his hiding place",
+          "target": 1,
+          "location": "ceres_port",
+          "type": "find"
+        },
+        {
+          "description": "Protect Zack from Martian debt collectors",
+          "target": 1,
+          "location": "ceres_port",
+          "type": "combat"
+        },
+        {
+          "description": "Return Zack safely to The Rusty Rocket",
+          "target": 1,
+          "location": "rusty_rocket",
+          "type": "escort"
+        }
+      ],
+      "rewards": {
+        "credits": 200,
+        "xp": 100,
+        "items": ["rusty_rocket_tab_card", "ceres_contact_list"],
+        "reputation": {
+          "ruby": 20,
+          "zack": 25,
+          "mars": -10
+        }
+      },
+      "failure_penalties": {
+        "reputation": {
+          "ruby": -15
+        }
+      },
+      "prerequisites": [],
+      "following_quests": ["lost_companion"],
+      "dialogue": {
+        "offer": [
+          {
+            "speaker": "ruby",
+            "text": "I'm worried about Zack, my new barback. He didn't show up for his shift, and his room hasn't been touched since yesterday."
+          },
+          {
+            "speaker": "ruby",
+            "text": "The poor boy escaped from a Martian 'pig-butchering' operation - one of those crypto scam compounds where they keep workers in debt slavery."
+          },
+          {
+            "speaker": "player",
+            "text": "Why would he suddenly disappear?"
+          },
+          {
+            "speaker": "ruby",
+            "text": "He received some messages yesterday that upset him. I didn't pry, but I suspect his former 'employers' might have tracked him down."
+          },
+          {
+            "speaker": "ruby",
+            "text": "Please find him before those Martian thugs do. The boy's become part of our weird family here, and I protect my own."
+          }
+        ],
+        "in_progress": [
+          {
+            "speaker": "ruby",
+            "text": "Have you found any sign of Zack? I'm getting more concerned by the hour."
+          }
+        ],
+        "completion": [
+          {
+            "speaker": "ruby",
+            "text": "Thank goodness you found him! Those Martian debt collectors had no legal standing here on Ceres, but they wouldn't have cared about legalities."
+          },
+          {
+            "speaker": "ruby",
+            "text": "Zack told me how you stood up for him. That took courage. The Rusty Rocket won't forget this debt."
+          },
+          {
+            "speaker": "ruby",
+            "text": "Here's your payment, plus a tab card for The Rusty Rocket. Consider your drinks on the house from now on. And this contact list might come in handy for future jobs around Ceres."
+          }
+        ],
+        "failure": [
+          {
+            "speaker": "ruby",
+            "text": "I've just received word that Zack was taken off-station by those Martian thugs. Back to indenture, or worse."
+          },
+          {
+            "speaker": "ruby",
+            "text": "I should have done more to protect him. We all should have. The Rusty Rocket looks after its own... or at least, we're supposed to."
+          }
+        ]
+      }
+    }
+  ]
+}

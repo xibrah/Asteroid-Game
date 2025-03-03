@@ -1,0 +1,85 @@
+List of Image Assets Needed
+32 bit rpg
+Based on the data files, here's a list of all the image assets you would need to create/generate:
+Character Portraits:
+
+stella_portrait.png
+gus_portrait.png
+robot_27_portrait.png
+ruby_portrait.png
+cv_portrait.png
+leo_portrait.png
+
+Character Sprites:
+
+stella_sprite.png
+gus_sprite.png
+robot_27_sprite.png
+ruby_sprite.png
+cv_sprite.png
+leo_sprite.png
+
+Location Backgrounds:
+
+psyche_township_bg.png
+shipyard_bg.png
+rusty_rocket_bg.png
+wardenhouse_bg.png
+core_museum_bg.png
+ceres_port_bg.png
+
+Item Icons:
+
+space_pistol_icon.png
+mining_laser_icon.png
+light_armor_icon.png
+medkit_icon.png
+energy_pack_icon.png
+diplomat_badge_icon.png
+exec_access_icon.png
+ship_component_icon.png
+recommendation_icon.png
+override_module_icon.png
+volger_auth_icon.png
+mining_tool_icon.png
+ration_pack_icon.png
+encryption_device_icon.png
+press_pass_icon.png
+tab_card_icon.png
+contact_list_icon.png
+domestic_robot_icon.png
+porter_robot_icon.png
+repair_kit_icon.png
+ore_sample_icon.png
+whiskey_icon.png
+ale_icon.png
+room_icon.png
+
+Item Sprites (for when items appear in the game world):
+
+space_pistol_sprite.png
+mining_laser_sprite.png
+light_armor_sprite.png
+medkit_sprite.png
+energy_pack_sprite.png
+diplomat_badge_sprite.png
+exec_access_sprite.png
+ship_component_sprite.png
+recommendation_sprite.png
+override_module_sprite.png
+volger_auth_sprite.png
+mining_tool_sprite.png
+ration_pack_sprite.png
+encryption_device_sprite.png
+press_pass_sprite.png
+tab_card_sprite.png
+contact_list_sprite.png
+domestic_robot_sprite.png
+porter_robot_sprite.png
+repair_kit_sprite.png
+ore_sample_sprite.png
+whiskey_sprite.png
+ale_sprite.png
+room_sprite.png
+
+For early development, you could create simple placeholder images for these assets - even colored squares with labels would work to get started. Later, you could replace them with more detailed artwork or commission an artist to create the graphics based on your descriptions.

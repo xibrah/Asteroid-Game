@@ -1,0 +1,49 @@
+# Pallas Wardenhouse Map
+# Legend:
+# W = Wall
+# F = Floor
+# D = Door
+# T = Table
+# C = Chair
+# M = Monitor/Computer
+# S = Storage
+# G = Guard Post
+# P = Prison Cell
+# E = Exit (to another area)
+# @ = Player starting position
+# 1-9 = NPC positions (see bottom for references)
+
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WGGGGWWWWWWWWWWWWWWWWWWWWWWWWGGGGGGW
+WG  GWPPPPPWSSSSSSSSSSSSSSSSW      W
+WG  GWPPPPPWSSSSSSSSSSSSSSSSW      W
+WG  GWPPPPPWSSSSSSSSSSSSSSSSW      W
+WG  GDPPPPPWSSSSSSSSSSSSSSSSW      W
+WG  GWWWWWWWWWWWWWDWWWWWWWWWW      W
+WG                                 W
+WWWWWWWWWW                   WWWWWWW
+W        W                   W     W
+W        W                   W     W
+W        D         @         D     W
+W        W                   W     W
+W        W                   W     W
+WWWWWWWWWW        3          WWWWDWW
+W                                  W
+W                                  W
+W   MM          TTTTTT            GW
+W            1  CCCCCC  2         GW
+W   MM        WWWWWWWWWW          GW
+W            WFFFFFFFFFW          GW
+W            WFTTTTTTFFW          GW
+W            WFCCCCCCFFW          GW
+W            WFFFFFFFFFW          GW
+W            WFMMMMMMFFW          GW
+W            WFFFFFFFFFW          GW
+W            WWWWWDWWWWW          GW
+WWWWWWWWWWWWWWWWWEWWWWWWWWWWWWWWWWWW
+
+# NPC Reference:
+# 1 = Volger (Syndicalist Leader)
+# 2 = Robot Guard
+# 3 = Prison Administrator
+# 4 = Captured Prisoner

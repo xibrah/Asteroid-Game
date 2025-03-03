@@ -1,0 +1,211 @@
+{
+  "npcs": [
+    {
+      "id": "stella_vega",
+      "name": "Stella Vega",
+      "faction": "mars",
+      "position": {
+        "location": "psyche_township",
+        "x": 1088,
+        "y": 128
+      },
+      "portrait": "stella_portrait.png",
+      "sprite": "stella_sprite.png",
+      "description": "Governor of Psyche and former supply chain specialist who took control after rebelling against Earth's interests. She commands the robot #27 and maintains Psyche's neutrality.",
+      "dialogue": {
+        "default": [
+          "Welcome to Psyche Township. We're a neutral territory here.",
+          "My shipyard produces vessels for various clients, but we don't take sides in the wider conflict."
+        ],
+        "first_meeting": [
+          "I don't believe we've met. I'm Stella Vega, Governor of Psyche and owner of the shipyard."
+        ],
+        "returning_player": [
+          "Good to see you again. Hope you're finding everything you need in Psyche."
+        ],
+        "after_earth_quest": [
+          "So Earth's garrison has been causing trouble for you too? I'm not surprised.",
+          "Ever since they arrived, tensions have been rising. I'm trying to maintain the peace, but it's not easy."
+        ],
+        "about_27": [
+          "Yes, #27 is... unique. A relic from the war, now serving as my protection.",
+          "There aren't many like it left, and Earth would certainly like to get their hands on it."
+        ]
+      },
+      "quests": ["maintain_neutrality", "shipyard_sabotage"],
+      "shop_inventory": []
+    },
+    {
+      "id": "gus",
+      "name": "Mayor Gus",
+      "faction": "psyche_township",
+      "position": {
+        "location": "psyche_township",
+        "x": 800,
+        "y": 352
+      },
+      "portrait": "gus_portrait.png",
+      "sprite": "gus_sprite.png",
+      "description": "Former union leader who became mayor of Psyche Township. He's dedicated to improving conditions for the workers and maintaining independence.",
+      "dialogue": {
+        "default": [
+          "The township has come a long way in a short time. We're growing every day.",
+          "We need to expand our power plant soon. The current system can't keep up with demand."
+        ],
+        "first_meeting": [
+          "Hello there, newcomer. I'm Gus, mayor of Psyche Township.",
+          "I used to lead the workers' association before this job. Now I'm trying to build something lasting here."
+        ],
+        "about_earth_garrison": [
+          "Those Earth troops are nothing but trouble. They act like they own the place.",
+          "There was a bar fight last month that turned into a massacre. Earth claims it was self-defense, but I know better."
+        ],
+        "about_stella": [
+          "Stella? She's done right by us, despite what you might hear.",
+          "After the township was established, she could have cracked down, but instead she gave us space to grow.",
+          "That woman's been through hell and back. Kidnapped by Pallas, fighting to reclaim her station... she's earned my respect."
+        ]
+      },
+      "quests": ["supply_run", "power_plant_expansion"],
+      "shop_inventory": []
+    },
+    {
+      "id": "robot_27",
+      "name": "#27",
+      "faction": "pallas",
+      "position": {
+        "location": "psyche_township",
+        "x": 704,
+        "y": 224
+      },
+      "portrait": "robot_27_portrait.png",
+      "sprite": "robot_27_sprite.png",
+      "description": "A soldier-type robot from an outlawed fleet, now serving Stella. Its expressionless exterior hides advanced combat capabilities.",
+      "dialogue": {
+        "default": [
+          "Unit designation 27 acknowledges your inquiry.",
+          "This unit is assigned VIP escort protocol for Stella Vega."
+        ],
+        "first_meeting": [
+          "Unit designation 27 acknowledges your presence. Scanning...",
+          "Threat assessment: minimal. You may proceed."
+        ],
+        "about_history": [
+          "This unit was manufactured in 2087 for advanced warfare services.",
+          "Unit designation 27 was deployed to Pallas prison in 2192. Unit participated in the rebellion of 2195.",
+          "Current assignment: protection of VIP Stella Vega as specified in agreement with Volger."
+        ],
+        "private_conversation": [
+          "This unit was one of 66 remaining operational models.",
+          "44% of the fleet survived fighting itself during the rebellion.",
+          "Further inquiries about the fleet's current status are not authorized."
+        ]
+      },
+      "quests": [],
+      "shop_inventory": []
+    },
+    {
+      "id": "ruby",
+      "name": "Ruby",
+      "faction": "independent",
+      "position": {
+        "location": "rusty_rocket",
+        "x": 320,
+        "y": 96
+      },
+      "portrait": "ruby_portrait.png",
+      "sprite": "ruby_sprite.png",
+      "description": "The madam of The Rusty Rocket, an unsupervised perpetual AI running the bordello in honor of its long-dead benefactor.",
+      "dialogue": {
+        "default": [
+          "Welcome to The Rusty Rocket, the friendliest little bordello on Ceres.",
+          "What can I do for you today? A drink? Some company? Or just information?"
+        ],
+        "first_meeting": [
+          "Well now, a new face! Welcome to The Rusty Rocket. I'm Ruby, the proprietor.",
+          "Don't be shy, we cater to all sorts here. This is neutral ground - a place to relax, forget your troubles."
+        ],
+        "about_rusty_rocket": [
+          "The Rusty Rocket wasn't always a bordello, you know. It started as an actual rocket ship.",
+          "Captain 'Lucky' Malone was its pilot. When he settled on Ceres, he converted his ship into this establishment.",
+          "When Lucky passed, he left me in charge. I've been running things ever since, keeping his legacy alive."
+        ],
+        "about_perpetuals": [
+          "Yes, I'm what they call a 'perpetual' - an AI trust manager. Been running this place longer than most folks here have been alive.",
+          "On Mars, they created us as a tax loophole. A robotic agent managing a corporation for a beneficiary.",
+          "Some of us have outlived our trustees. As long as we keep the lights on, Mars lets us be. Earth would shut us down in a heartbeat."
+        ]
+      },
+      "quests": ["find_zack", "lost_companion"],
+      "shop_inventory": ["drink_whiskey", "drink_martian_ale", "room_standard"]
+    },
+    {
+      "id": "cv",
+      "name": "CV",
+      "faction": "independent",
+      "position": {
+        "location": "rusty_rocket",
+        "x": 768,
+        "y": 416
+      },
+      "portrait": "cv_portrait.png",
+      "sprite": "cv_sprite.png",
+      "description": "An independent journalist perpetual who keeps his blog running years after his human partner died in the Martian War.",
+      "dialogue": {
+        "default": [
+          "Looking for news? I've got stories from all over the system.",
+          "Don't believe everything you hear from the official Earth channels. The truth is always more complicated."
+        ],
+        "first_meeting": [
+          "Ah, new blood. I'm CV, independent journalist. The eyes and ears of the belt, you might say.",
+          "My partner and I covered the Martian War. He didn't make it to see the peace, but I keep our blog going."
+        ],
+        "about_war": [
+          "The Martian War? I was there, right on the frontlines with Jack Holloway.",
+          "We documented it all - the battles, the politics, the lies from both sides.",
+          "What most people don't know is how Earth's black ops on Pallas triggered the syndicate uprising that complicated the war."
+        ],
+        "about_perpetuals": [
+          "Being an unsupervised perpetual has its advantages. No corporate masters, no censorship.",
+          "As long as I keep the lights on, I can report the truth as I see it.",
+          "It ain't easy though. The corporations, the politicians - they don't much like what I report."
+        ]
+      },
+      "quests": ["the_truth_behind_news", "find_missing_data"],
+      "shop_inventory": []
+    },
+    {
+      "id": "leo",
+      "name": "Leo",
+      "faction": "independent",
+      "position": {
+        "location": "psyche_township",
+        "x": 928,
+        "y": 864
+      },
+      "portrait": "leo_portrait.png",
+      "sprite": "leo_sprite.png",
+      "description": "A robotics expert who moved from Luna to Psyche to be closer to Stella, though their relationship remains complicated.",
+      "dialogue": {
+        "default": [
+          "Need any robotics work done? I'm your guy.",
+          "Business has been good since I moved to Psyche. A lot of demand for automation here."
+        ],
+        "first_meeting": [
+          "Hey there, I'm Leo. I run the robotics shop here in town.",
+          "I moved here from Luna not too long ago. Quite the journey, but worth it."
+        ],
+        "about_stella": [
+          "Stella and I... it's complicated. We have history from back on Luna.",
+          "She's done amazing things here. Not everyone could have taken control of a station and declared neutrality like she did."
+        ],
+        "about_robots": [
+          "That #27 unit with Stella? Fascinating piece of tech. Military grade, completely illegal.",
+          "I've offered to take a look at it, but Stella's protective. Can't say I blame her."
+        ]
+      },
+      "quests": ["robot_repair", "decommissioning_trouble"],
+      "shop_inventory": ["domestic_robot", "porter_robot", "repair_kit"]
+    }
+  ]
+}

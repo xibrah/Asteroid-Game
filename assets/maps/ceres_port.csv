@@ -1,0 +1,51 @@
+# Ceres Port Map
+# Legend:
+# W = Wall
+# F = Floor
+# D = Door
+# T = Table
+# C = Chair
+# M = Military/Security
+# R = Robot Worker
+# V = Viewport/Window
+# S = Shop/Stall
+# E = Exit (to another area)
+# H = Hangar/Dock Area
+# @ = Player starting position
+# 1-9 = NPC positions (see bottom for references)
+
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WHHHHHHHHHHHHWSSSSSSSSSWMMMMMMMMMEW
+WHHHHHHHHHHHHWSSSSSSSSSWMMMMMMMMMWW
+WHHHHHHHHHHHHWSSSSSSSSSWMMMMMMMMMWW
+WHHHHHHHHHHHHDSSSSSSSSSDMMMMMMMMMWW
+WHHHHHHHHHHHHWSSSSSSSSSWMMMMMMMMMWW
+WHHHHHHHHHHHHWSSSSSSSSSWMMMMMMMMMWW
+WHHHHHHHHHHHHWWWWWDWWWWWWWWWDWWWWWW
+WHHHHHHHHHHHHW         3      TTCWW
+WHHHHHHHHHHHHW                TTCWW
+WHHHHHHHHHHHHD         @      TTCWW
+WHHHHHHHHHHHHW                TTCWW
+WHHHHHHHHHHHHW                   WW
+WWWWWWWWDWWWWWW                  WW
+WSSSSSSSSSSSSW         R  R      WW
+WSSSSSSSSSSSSW                   WW
+WSSSSSSSSSSSSW    R           WWWWW
+WSSSSSSSSSSSSW              2 WMMMW
+WSSSSSSSSSSSSW                DMMMW
+WSSSSSSSSSSSSW         1      WMMMW
+WSSSSSSSSSSSSW                WMMMW
+WSSSSSSSSSSSSW      R         WWWWW
+WSSSSSSSSSSSSW                   EW
+WSSSSSSSSSSSSW         R         WW
+WSSSSSSSSSSSSW                   WW
+WSSSSSSSSSSSSW  R    R  R        WW
+WSSSSSSSSSSSSW                   WW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+
+# NPC Reference:
+# 1 = Commander Davis (Military Officer)
+# 2 = Major Butler (Earth Representative)
+# 3 = Port Administrator
+# 4 = Merchant
+# R = Robot Workers (scattered throughout)
