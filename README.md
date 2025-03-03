@@ -38,7 +38,7 @@ To run this game, you would need to:
 ## Next Steps for Development
 
 1. **Asset Creation**: Add sprites for characters, items, and environments
-2. **Combat System**: Implement encounters with enemies from your universe
+2. **Combat System**: Implement encounters with enemies from Asteroid Frontier universe
 3. **Advanced Quests**: Create more complex quest chains tied to your story
 4. **Ship Management**: Add a system for upgrading and customizing the player's ship
 5. **Faction System**: Develop more complex faction relationships and reputation effects
