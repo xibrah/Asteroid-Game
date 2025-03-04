@@ -115,51 +115,73 @@ class DialogueManager:
         """Start a dialogue with an NPC"""
         self.current_npc = npc
         self.player = player
-        
+    
         # Check if NPC has full dialogue data from JSON
         if hasattr(npc, 'full_dialogue') and npc.full_dialogue:
             print(f"Using full dialogue data for {npc.name}")
             # Create a dialogue tree using the full dialogue data
             self.dialogue_tree = DialogueTree(npc.name)
-        
+    
             # Add nodes based on full dialogue
             dialogue_data = npc.full_dialogue
-        
-            # Start node
-            start_text = dialogue_data.get("default", ["Hello!"])[0]
-        
+    
+            # Determine which initial text to use
+            start_text = ""
+            if "first_meeting" in dialogue_data and not getattr(npc, 'met_player', False):
+                start_text = dialogue_data.get("first_meeting", ["Hello!"])[0]
+                npc.met_player = True
+            elif "returning_player" in dialogue_data and getattr(npc, 'met_player', False):
+                start_text = dialogue_data.get("returning_player", ["Hello again!"])[0]
+            else:
+                start_text = dialogue_data.get("default", ["Hello!"])[0]
+    
             # Check for different dialogue options based on NPC state
             has_quest = hasattr(npc, 'quest') and npc.quest
             quest_offered = getattr(npc, 'quest_offered', False)
             quest_completed = has_quest and getattr(npc.quest, 'completed', False)
             has_shop = getattr(npc, 'has_shop', False)
-        
+    
             # Create appropriate dialogue options
             responses = []
             if "about" in dialogue_data:
                 responses.append(("Tell me about yourself.", "about"))
-            if "events" in dialogue_data:
-                responses.append(("What's going on around here?", "events"))
+        
+            # Add topic-specific dialogue options
+            for topic, messages in dialogue_data.items():
+                if topic not in ["default", "first_meeting", "returning_player", "about"]:
+                    if isinstance(messages, list) and messages:
+                        # Don't add topics that are conditionally shown elsewhere
+                        if topic != "quest_offer" and topic != "quest_accept" and topic != "quest_decline":
+                            responses.append((f"Tell me about {topic.replace('_', ' ')}.", topic))
+        
             if has_quest and not quest_offered:
                 responses.append(("I heard you might have work for me?", "quest_offer"))
+            elif has_quest and quest_offered and not quest_completed:
+                responses.append(("About that task you gave me...", "quest_status"))
+            elif has_quest and quest_completed:
+                responses.append(("I've completed your task.", "quest_complete"))
+            
             if has_shop:
                 responses.append(("I'd like to see your wares.", "shop"))
-            responses.append(("Goodbye.", "exit"))
         
+            responses.append(("Goodbye.", "exit"))
+    
             # Add the start node
             self.dialogue_tree.add_node("start", start_text, responses)
-        
+    
             # Add other dialogue nodes
             for node_id, dialogue_lines in dialogue_data.items():
-                if node_id != "default":
-                    # Skip "default" as we already used it for the start node
-                    if isinstance(dialogue_lines, list) and dialogue_lines:
-                        # Use first line as the text
-                        node_text = dialogue_lines[0]
-                        # Add a way back to the start
-                        node_responses = [("Let's talk about something else.", "start")]
-                        self.dialogue_tree.add_node(node_id, node_text, node_responses)
-        
+                # Skip special nodes we handle separately
+                if node_id in ["default", "first_meeting", "returning_player"]:
+                    continue
+                
+                if isinstance(dialogue_lines, list) and dialogue_lines:
+                    # Use first line as the text
+                    node_text = dialogue_lines[0]
+                    # Add a way back to the start
+                    node_responses = [("Let's talk about something else.", "start")]
+                    self.dialogue_tree.add_node(node_id, node_text, node_responses)
+    
             # Add special nodes for quests, shops, etc.
             if has_quest and not quest_offered:
                 quest_desc = npc.quest.description if hasattr(npc.quest, 'description') else "I need help with something."
@@ -167,43 +189,54 @@ class DialogueManager:
                     ("I'll help you out.", "quest_accept"),
                     ("I'm not interested right now.", "quest_decline")
                 ])
-            
+        
                 self.dialogue_tree.add_node("quest_accept", "Excellent! Thank you so much.", [
                     ("I'll get right on it.", "exit")
                 ], {"quest_start": npc.quest.id if hasattr(npc.quest, 'id') else "quest_1"})
-            
+        
                 self.dialogue_tree.add_node("quest_decline", "I understand. If you change your mind, I'll be here.", [
                     ("Let's talk about something else.", "start"),
                     ("Goodbye for now.", "exit")
                 ])
-        
+            
+            if has_quest and quest_offered and not quest_completed:
+                self.dialogue_tree.add_node("quest_status", "How is the task coming along?", [
+                    ("I'm still working on it.", "start"),
+                    ("Can you remind me what to do?", "quest_reminder")
+                ])
+            
+                self.dialogue_tree.add_node("quest_reminder", quest_desc, [
+                    ("Thanks, I'll get back to it.", "exit"),
+                    ("Let's talk about something else.", "start")
+                ])
+    
             if has_shop:
                 self.dialogue_tree.add_node("shop", "Take a look at what I have available.", [
                     ("Let me see.", "shop_open"),
                     ("Maybe later.", "start")
                 ])
-            
+        
                 self.dialogue_tree.add_node("shop_open", "Here's what I have in stock.", [
                     ("Let's talk about something else.", "start"),
                     ("Goodbye.", "exit")
                 ], {"open_shop": True})
-        
+    
             self.dialogue_tree.add_node("exit", "See you around!", [], {"end_dialogue": True})
-        
+    
             # Start the dialogue
             self.active_dialogue = self.dialogue_tree.get_node("start")
             return self.active_dialogue
     
         else:
             # Use the original method for NPCs without full dialogue data
-            # Your existing dialogue creation code here...
+            # Your existing code for loading default dialogue here...
             # Create a dialogue tree for this NPC
             self.dialogue_tree = DialogueTree(npc.name)
-        
+    
             # Add nodes to the dialogue tree
             # Start node
             start_text = "Hello there! What can I do for you today?"
-        
+    
             # Different dialogue based on whether NPC has a quest
             if hasattr(npc, 'quest') and npc.quest and not getattr(npc, 'quest_offered', False):
                 self.dialogue_tree.add_node("start", start_text, [
@@ -230,64 +263,107 @@ class DialogueManager:
                     ("What's going on around here?", "events"),
                     ("Goodbye.", "exit")
                 ])
-        
-            # Add remaining dialogue nodes
-            self.dialogue_tree.add_node("about", f"I'm {npc.name}. I've been living here on {npc.faction if npc.faction else 'this asteroid'} for quite some time now.", [
-                ("What do you do here?", "occupation"),
-                ("Let's talk about something else.", "start")
-            ])
-        
-            self.dialogue_tree.add_node("occupation", "I'm a [occupation]. It's not glamorous, but it pays the bills.", [
-                ("Interesting. Let's talk about something else.", "start")
-            ])
-        
-            self.dialogue_tree.add_node("events", "Things have been tense lately with the Earth garrison. Mayor Gus is doing his best to keep the peace.", [
-                ("Tell me more about the Earth garrison.", "garrison"),
-                ("What do you know about Mayor Gus?", "gus"),
-                ("Let's talk about something else.", "start")
-            ])
-        
-            self.dialogue_tree.add_node("garrison", "The Earth Republic sent troops here, supposedly to protect the station. But there's been trouble... fights breaking out.", [
-                ("What does Mayor Gus think about this?", "gus"),
-                ("Let's talk about something else.", "start")
-            ])
-        
-            self.dialogue_tree.add_node("gus", "Gus is a good man. Used to be union leader before becoming mayor. He's trying to balance everyone's interests, but it's not easy.", [
-                ("What do you know about the Earth garrison?", "garrison"),
-                ("Let's talk about something else.", "start")
-            ])
-        
-            if hasattr(npc, 'quest') and npc.quest and not getattr(npc, 'quest_offered', False):
-                quest_desc = npc.quest.description if hasattr(npc.quest, 'description') else "I need some help with something."
-                self.dialogue_tree.add_node("quest_offer", f"Actually, yes! {quest_desc}", [
-                    ("I'll help you out.", "quest_accept"),
-                    ("I'm not interested right now.", "quest_decline")
-                ])
-        
-                self.dialogue_tree.add_node("quest_accept", "Excellent! Thank you so much.", [
-                    ("I'll get right on it.", "exit")
-                ], {"quest_start": npc.quest.id if hasattr(npc.quest, 'id') else "quest_1"})
-        
-                self.dialogue_tree.add_node("quest_decline", "I understand. If you change your mind, I'll be here.", [
-                    ("Let's talk about something else.", "start"),
-                    ("Goodbye for now.", "exit")
-                ])
-        
-            if hasattr(npc, 'has_shop') and npc.has_shop:
-                self.dialogue_tree.add_node("shop", "Take a look at what I have available.", [
-                    ("Let me see.", "shop_open"),
-                    ("Maybe later.", "start")
-                ])
-        
-                self.dialogue_tree.add_node("shop_open", "Here's what I have in stock.", [
-                    ("Let's talk about something else.", "start"),
-                    ("Goodbye.", "exit")
-                ], {"open_shop": True})
     
-            self.dialogue_tree.add_node("exit", "See you around!", [], {"end_dialogue": True})
+            # Add remaining default dialogue nodes
+            # (keeping your existing code for default dialogue)
         
             self.active_dialogue = self.dialogue_tree.get_node("start")
             return self.active_dialogue
+    
+        # else:
+        #     # Use the original method for NPCs without full dialogue data
+        #     # Your existing dialogue creation code here...
+        #     # Create a dialogue tree for this NPC
+        #     self.dialogue_tree = DialogueTree(npc.name)
+        
+        #     # Add nodes to the dialogue tree
+        #     # Start node
+        #     start_text = "Hello there! What can I do for you today?"
+        
+        #     # Different dialogue based on whether NPC has a quest
+        #     if hasattr(npc, 'quest') and npc.quest and not getattr(npc, 'quest_offered', False):
+        #         self.dialogue_tree.add_node("start", start_text, [
+        #             ("Tell me about yourself.", "about"),
+        #             ("What's going on around here?", "events"),
+        #             ("I heard you might have work for me?", "quest_offer")
+        #         ])
+        #     elif hasattr(npc, 'quest') and npc.quest and getattr(npc.quest, 'completed', False):
+        #         self.dialogue_tree.add_node("start", "Thanks again for your help!", [
+        #             ("Tell me about yourself.", "about"),
+        #             ("What's going on around here?", "events"),
+        #             ("Goodbye.", "exit")
+        #         ])
+        #     elif hasattr(npc, 'has_shop') and npc.has_shop:
+        #         self.dialogue_tree.add_node("start", start_text, [
+        #             ("Tell me about yourself.", "about"),
+        #             ("What's going on around here?", "events"),
+        #             ("I'd like to see your wares.", "shop"),
+        #             ("Goodbye.", "exit")
+        #         ])
+        #     else:
+        #         self.dialogue_tree.add_node("start", start_text, [
+        #             ("Tell me about yourself.", "about"),
+        #             ("What's going on around here?", "events"),
+        #             ("Goodbye.", "exit")
+        #         ])
+        
+        #     # Add remaining dialogue nodes
+        #     self.dialogue_tree.add_node("about", f"I'm {npc.name}. I've been living here on {npc.faction if npc.faction else 'this asteroid'} for quite some time now.", [
+        #         ("What do you do here?", "occupation"),
+        #         ("Let's talk about something else.", "start")
+        #     ])
+        
+        #     self.dialogue_tree.add_node("occupation", "I'm a [occupation]. It's not glamorous, but it pays the bills.", [
+        #         ("Interesting. Let's talk about something else.", "start")
+        #     ])
+        
+        #     self.dialogue_tree.add_node("events", "Things have been tense lately with the Earth garrison. Mayor Gus is doing his best to keep the peace.", [
+        #         ("Tell me more about the Earth garrison.", "garrison"),
+        #         ("What do you know about Mayor Gus?", "gus"),
+        #         ("Let's talk about something else.", "start")
+        #     ])
+        
+        #     self.dialogue_tree.add_node("garrison", "The Earth Republic sent troops here, supposedly to protect the station. But there's been trouble... fights breaking out.", [
+        #         ("What does Mayor Gus think about this?", "gus"),
+        #         ("Let's talk about something else.", "start")
+        #     ])
+        
+        #     self.dialogue_tree.add_node("gus", "Gus is a good man. Used to be union leader before becoming mayor. He's trying to balance everyone's interests, but it's not easy.", [
+        #         ("What do you know about the Earth garrison?", "garrison"),
+        #         ("Let's talk about something else.", "start")
+        #     ])
+        
+        #     if hasattr(npc, 'quest') and npc.quest and not getattr(npc, 'quest_offered', False):
+        #         quest_desc = npc.quest.description if hasattr(npc.quest, 'description') else "I need some help with something."
+        #         self.dialogue_tree.add_node("quest_offer", f"Actually, yes! {quest_desc}", [
+        #             ("I'll help you out.", "quest_accept"),
+        #             ("I'm not interested right now.", "quest_decline")
+        #         ])
+        
+        #         self.dialogue_tree.add_node("quest_accept", "Excellent! Thank you so much.", [
+        #             ("I'll get right on it.", "exit")
+        #         ], {"quest_start": npc.quest.id if hasattr(npc.quest, 'id') else "quest_1"})
+        
+        #         self.dialogue_tree.add_node("quest_decline", "I understand. If you change your mind, I'll be here.", [
+        #             ("Let's talk about something else.", "start"),
+        #             ("Goodbye for now.", "exit")
+        #         ])
+        
+        #     if hasattr(npc, 'has_shop') and npc.has_shop:
+        #         self.dialogue_tree.add_node("shop", "Take a look at what I have available.", [
+        #             ("Let me see.", "shop_open"),
+        #             ("Maybe later.", "start")
+        #         ])
+        
+        #         self.dialogue_tree.add_node("shop_open", "Here's what I have in stock.", [
+        #             ("Let's talk about something else.", "start"),
+        #             ("Goodbye.", "exit")
+        #         ], {"open_shop": True})
+    
+        #     self.dialogue_tree.add_node("exit", "See you around!", [], {"end_dialogue": True})
+        
+        #     self.active_dialogue = self.dialogue_tree.get_node("start")
+        #     return self.active_dialogue
     
     def choose_response(self, index):
         """Select a dialogue response"""

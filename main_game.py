@@ -111,6 +111,7 @@ class AsteroidFrontier:
                 print(f"NPCs file loaded with {len(data.get('npcs', []))} entries")
             else:
                 print(f"NPCs file not found: {npcs_file}")
+                return pygame.sprite.Group()
             
             npcs_data = data.get("npcs", [])
             location_npcs = pygame.sprite.Group()
@@ -118,8 +119,9 @@ class AsteroidFrontier:
             # Find NPCs for this location
             for npc_data in npcs_data:
                 name = npc_data.get("name", "Unknown")
-                npc_location = position.get("location", "unknown")
                 position = npc_data.get("position", {})
+                npc_location = position.get("location", "unknown")
+
                 if npc_location == location_id:
                     from character_system import NPC as NPCCharacter
                 
