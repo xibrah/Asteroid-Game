@@ -711,9 +711,27 @@ class AsteroidFrontier:
         return locations
     
     def load_location(self, location_id):
-        """Load a specific location's map and NPCs"""
+        """Load a specific location's map and NPCs, 3/8/25"""
         print(f"Loading location: {location_id}")
     
+        # Special handling for ship cabin
+        if location_id == "ship_cabin":
+            # Load the ship cabin map file
+            map_file = "mvp_ship_cabin.csv"
+            self.current_level = self.load_map_from_file(map_file)
+            self.current_level["name"] = "ship_cabin"
+        
+            # Set up player position
+            if hasattr(self, 'player') and self.current_level and "player_start" in self.current_level:
+                self.player.rect.x = self.current_level["player_start"][0]
+                self.player.rect.y = self.current_level["player_start"][1]
+                print(f"Placing player at start position: ({self.player.rect.x}, {self.player.rect.y})")
+        
+            # No NPCs in ship cabin yet
+            self.npcs = pygame.sprite.Group()
+        
+            return True
+
         # Check if location exists in our data
         location_data = None
         for loc in self.locations_data:
@@ -836,15 +854,12 @@ class AsteroidFrontier:
         """Check if player is colliding with an exit tile 3/4/25"""
         # Make sure we have the objects sprite group
         if "objects" not in self.current_level or not self.current_level["objects"]:
-            print("No objects group in level")
             return False
     
         # Get all exit objects
         exits = [obj for obj in self.current_level["objects"] if hasattr(obj, 'is_exit')]
     
         if not exits:
-            # Only print this in debug mode to avoid console spam
-            # print("No exit tiles in this level!")
             self.near_exit = False
             return False
     
@@ -862,11 +877,16 @@ class AsteroidFrontier:
                 # Only show travel menu if T key is pressed
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_t]:
-                    # Important: only handle the key press in one place!
-                    # Either here OR in the key event handler, not both
-                    print("T key pressed, showing travel menu")
-                    self.show_travel_options()
-                    return True
+                     # Special handling for ship cabin
+                    if self.current_level and self.current_level.get("name") == "ship_cabin":
+                        print("Exit from ship cabin detected")
+                        self.process_ship_cabin_exit()
+                        return True
+                    else:
+                        # Regular travel for other locations
+                        print("T key pressed, showing travel menu")
+                        self.show_travel_options()
+                        return True
             
                 # Display hint even if T is not pressed
                 return False
@@ -1247,14 +1267,23 @@ class AsteroidFrontier:
         screen.blit(money_text, (10, 40))
         
         # Current location
-        location_text = font.render(f"Location: {self.current_level['name'] if self.current_level else 'Unknown'}", True, WHITE)
+        location_name = self.current_level['name'].replace("_", " ").title() if self.current_level else "Unknown"
+        location_text = font.render(f"Location: {location_name}", True, WHITE)
         screen.blit(location_text, (SCREEN_WIDTH - location_text.get_width() - 10, 10))
         
         # Exit hint - only show if player is near an exit
         if self.near_exit:
-            exit_text = font.render("Press T to travel to a new location", True, (0, 255, 0))
-            screen.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 60))
-    
+            exit_text = None
+            if self.current_level and self.current_level.get("name") == "ship_cabin":
+                if hasattr(self, 'docked_location') and self.docked_location:
+                    exit_text = font.render(f"Press T to disembark to {self.docked_location.replace('_', ' ').title()}", True, (0, 255, 0))
+                else:
+                    exit_text = font.render("Press T to launch into space", True, (0, 255, 0))
+            else:
+                exit_text = font.render("Press T to travel to a new location", True, (0, 255, 0))
+            
+            if exit_text:
+                screen.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 60))
         
         # Controls hint
         controls = font.render("I: Inventory | M: Map | Q: Quests | E: Interact", True, WHITE)
@@ -1418,24 +1447,24 @@ class AsteroidFrontier:
             int(self.player_ship.y - SCREEN_HEIGHT // 2)
     )
 
-    def dock_at_location(self, location_id):
-        """Dock the ship at a location and transition to that level 3/4/25"""
-        print(f"Docking at {location_id}")
+    # def dock_at_location(self, location_id):
+    #     """Dock the ship at a location and transition to that level 3/4/25"""
+    #     print(f"Docking at {location_id}")
     
-        # Ensure this is a valid location
-        if location_id not in self.space_map.locations:
-            print(f"Error: Invalid location ID {location_id}")
-            return
+    #     # Ensure this is a valid location
+    #     if location_id not in self.space_map.locations:
+    #         print(f"Error: Invalid location ID {location_id}")
+    #         return
     
-        # Load the location
-        success = self.load_location(location_id)
+    #     # Load the location
+    #     success = self.load_location(location_id)
     
-        if success:
-            # Reset game state
-            self.game_state = GameState.OVERWORLD
-            print(f"Successfully docked at {location_id}")
-        else:
-            print(f"Failed to dock at {location_id}")
+    #     if success:
+    #         # Reset game state
+    #         self.game_state = GameState.OVERWORLD
+    #         print(f"Successfully docked at {location_id}")
+    #     else:
+    #         print(f"Failed to dock at {location_id}")
 
     def draw_space_travel(self, screen):
         """debug Draw the space travel view with direct screen access 3/4/25"""
@@ -1548,26 +1577,78 @@ class AsteroidFrontier:
             print(f"ERROR initializing space travel: {e}")
             return False
 
+    # def dock_at_location(self, location_id):
+    #     """Dock at a location from space mode"""
+    #     print(f"Docking at {location_id}")
+    
+    #     # Exit space mode
+    #     self.in_space_mode = False
+    
+    #     # Load the selected location
+    #     success = self.load_location(location_id)
+    
+    #     if success:
+    #         # Change game state
+    #         self.game_state = GameState.OVERWORLD
+    #         print(f"Successfully docked at {location_id}")
+    #         return True
+    #     else:
+    #         print(f"Failed to dock at {location_id}")
+    #         # Stay in space mode if loading failed
+    #         self.game_state = GameState.SPACE_TRAVEL
+    #         return False
+
+    def enter_ship_cabin(self):
+        """Transition to ship interior view, 3/8/25"""
+        print("Entering ship cabin")
+    
+        # Set appropriate game state
+        self.game_state = GameState.OVERWORLD
+    
+        # Load the ship cabin map
+        self.load_location("ship_cabin")
+    
+        return True
+
+    def exit_to_space(self):
+        """Exit from cabin to space travel mode, 3/8/25"""
+        print("Exiting to space")
+    
+        # Call the enter_space method to initialize space travel
+        self.enter_space()
+    
+        return True
+
     def dock_at_location(self, location_id):
-        """Dock at a location from space mode"""
+        """Dock at a location from space mode - modified to go to cabin first, 3/8/25"""
         print(f"Docking at {location_id}")
     
-        # Exit space mode
-        self.in_space_mode = False
+        # First enter the ship cabin
+        success = self.enter_ship_cabin()
     
-        # Load the selected location
-        success = self.load_location(location_id)
+        # Store the destination for when player uses the exit
+        self.docked_location = location_id
     
-        if success:
-            # Change game state
-            self.game_state = GameState.OVERWORLD
-            print(f"Successfully docked at {location_id}")
-            return True
+        return success
+
+    def process_ship_cabin_exit(self):
+        """Handle exits from the ship cabin, 3/8/25"""
+        # Check where the exit should lead
+        if hasattr(self, 'docked_location') and self.docked_location:
+            # Exit to docked location
+            print(f"Disembarking to {self.docked_location}")
+            success = self.load_location(self.docked_location)
+            if success:
+                # Clear docked location after successful disembark
+                self.docked_location = None
+                return True
         else:
-            print(f"Failed to dock at {location_id}")
-            # Stay in space mode if loading failed
-            self.game_state = GameState.SPACE_TRAVEL
-            return False
+            # No docked location means we're in space
+            return self.exit_to_space()
+    
+        return False
+
+    #debug stuff below#
 
     def test_game_states(self):
         """Test function to verify game state transitions work correctly 3/4/25"""
