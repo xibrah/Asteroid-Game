@@ -15,7 +15,8 @@ from map_system import Map, Camera, Level, Tile
 from character_system import Character, Player as PlayerCharacter, NPC as NPCCharacter
 from dialogue_quest_system import DialogueManager, QuestManager, Quest
 from item_inventory import Inventory, ItemFactory
-from space_travel_system import SystemMap, Location, SpaceTravel
+from space_travel_system import SystemMap, Location
+from space_travel import SpaceTravel
 from camera import Camera
 
 # Initialize Pygame
@@ -49,143 +50,54 @@ os.makedirs('assets/icons', exist_ok=True)
 os.makedirs('save', exist_ok=True)
 
 class SpaceMap:
-    """space travel update 3/4/25"""
+    """simple debug version 3/4/25"""
     def __init__(self, width, height):
         self.width = width
         self.height = height
         self.locations = {}  # Dictionary of locations {id: Location}
-        self.player_ship = None
-        self.stars = []
-        self.asteroids = []
+        
+        # No need for the complex background generation yet
         self.background = pygame.Surface((width, height))
-        self.generate_background()
+        self.background.fill((5, 5, 20))  # Simple dark background
         
-    def generate_background(self):
-        """Generate a starfield background"""
-        self.background.fill((5, 5, 20))  # Deep space background
-        
-        # Generate stars
-        for _ in range(500):
-            x = random.randint(0, self.width)
-            y = random.randint(0, self.height)
+        # Simple star field
+        for _ in range(1000):
+            x = random.randint(0, width)
+            y = random.randint(0, height)
             brightness = random.randint(50, 255)
-            size = random.randint(1, 3)
-            self.stars.append({
-                'pos': (x, y),
-                'color': (brightness, brightness, brightness),
-                'size': size
-            })
+            size = 1 if brightness < 200 else 2
             pygame.draw.circle(self.background, 
-                              (brightness, brightness, brightness), 
-                              (x, y), size)
-        
-        # Generate asteroid fields
-        for _ in range(8):
-            field_x = random.randint(0, self.width)
-            field_y = random.randint(0, self.height)
-            
-            for _ in range(random.randint(10, 30)):
-                offset_x = random.randint(-300, 300)
-                offset_y = random.randint(-300, 300)
-                size = random.randint(5, 20)
-                self.asteroids.append({
-                    'pos': (field_x + offset_x, field_y + offset_y),
-                    'size': size,
-                    'color': (100, 90, 80)
-                })
+                             (brightness, brightness, brightness), 
+                             (x, y), size)
     
     def add_location(self, location_id, location_data):
         """Add a location to the space map"""
         self.locations[location_id] = location_data
-    
-    def draw(self, screen, camera_pos):
-        """Draw the space map with camera offset"""
-        # Calculate visible area of the map
-        view_rect = pygame.Rect(
-            camera_pos[0], 
-            camera_pos[1], 
-            SCREEN_WIDTH, 
-            SCREEN_HEIGHT
-        )
-        
-        # Draw portion of background
-        screen.blit(self.background, (0, 0), view_rect)
-        
-        # Draw asteroids that are in view
-        for asteroid in self.asteroids:
-            screen_x = asteroid['pos'][0] - camera_pos[0]
-            screen_y = asteroid['pos'][1] - camera_pos[1]
-            
-            if (0 <= screen_x <= SCREEN_WIDTH and 0 <= screen_y <= SCREEN_HEIGHT):
-                pygame.draw.circle(screen, asteroid['color'], 
-                                  (screen_x, screen_y), asteroid['size'])
-        
-        # Draw locations that are in view
-        for loc_id, location in self.locations.items():
-            screen_x = location['position'][0] - camera_pos[0]
-            screen_y = location['position'][1] - camera_pos[1]
-            
-            if (0 <= screen_x <= SCREEN_WIDTH and 0 <= screen_y <= SCREEN_HEIGHT):
-                # Draw location marker
-                pygame.draw.circle(screen, location['color'], 
-                                 (screen_x, screen_y), 15)
-                
-                # Draw location name
-                font = pygame.font.Font(None, 24)
-                text = font.render(location['name'], True, (255, 255, 255))
-                screen.blit(text, (screen_x - text.get_width() // 2, 
-                                 screen_y + 20))
-        
-        # Draw player ship
-        if self.player_ship:
-            pygame.draw.polygon(screen, (0, 200, 255), [
-                (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 10),
-                (SCREEN_WIDTH // 2 - 7, SCREEN_HEIGHT // 2 + 10),
-                (SCREEN_WIDTH // 2 + 7, SCREEN_HEIGHT // 2 + 10)
-            ])
+        print(f"Added location: {location_id} at {location_data['position']}")
 
 class PlayerShip:
-    """space travel update 3/4/25"""
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.speed = 5
         self.rotation = 0  # In degrees, 0 = up
-        self.thrust = 0
-        self.max_thrust = 10
-        self.fuel = 100
-        self.max_fuel = 100
-        
-        # Ship stats could be customizable
-        self.stats = {
-            'hull': 100,
-            'engines': 50,
-            'weapons': 30,
-            'shields': 20
-        }
         
         # For collision detection
         self.rect = pygame.Rect(x - 10, y - 10, 20, 20)
-    
     def update(self, keys, dt):
         """Update ship position based on input"""
-        # Rotation control
+        dx = 0
+        dy = 0
+        
+        # Simplified movement for testing
         if keys[pygame.K_LEFT]:
-            self.rotation = (self.rotation - 2) % 360
+            dx = -self.speed
         if keys[pygame.K_RIGHT]:
-            self.rotation = (self.rotation + 2) % 360
-        
-        # Thrust control
+            dx = self.speed
         if keys[pygame.K_UP]:
-            self.thrust = min(self.thrust + 0.1, self.max_thrust)
-            self.fuel = max(0, self.fuel - 0.05)
-        else:
-            self.thrust = max(0, self.thrust - 0.05)
-        
-        # Calculate movement based on thrust and rotation
-        angle_rad = math.radians(self.rotation)
-        dx = -math.sin(angle_rad) * self.thrust
-        dy = -math.cos(angle_rad) * self.thrust
+            dy = -self.speed
+        if keys[pygame.K_DOWN]:
+            dy = self.speed
         
         # Update position
         self.x += dx
@@ -194,58 +106,11 @@ class PlayerShip:
         # Update collision rectangle
         self.rect.x = self.x - 10
         self.rect.y = self.y - 10
-    
-    def draw(self, screen, camera_pos):
-        """Draw ship at screen center"""
-        # Convert ship's angle to radians
-        angle_rad = math.radians(self.rotation)
-        
-        # Calculate vertices of the ship triangle
-        ship_points = [
-            (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 10),  # Nose
-            (SCREEN_WIDTH // 2 - 7, SCREEN_HEIGHT // 2 + 10),  # Left wing
-            (SCREEN_WIDTH // 2 + 7, SCREEN_HEIGHT // 2 + 10),  # Right wing
-        ]
-        
-        # Draw ship
-        pygame.draw.polygon(screen, (0, 200, 255), ship_points)
-        
-        # Draw engine flame if thrusting
-        if self.thrust > 0:
-            flame_length = int(self.thrust * 2)
-            flame_points = [
-                (SCREEN_WIDTH // 2 - 5, SCREEN_HEIGHT // 2 + 10),
-                (SCREEN_WIDTH // 2 + 5, SCREEN_HEIGHT // 2 + 10),
-                (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 10 + flame_length)
-            ]
-            pygame.draw.polygon(screen, (255, 165, 0), flame_points)
-        
-        # Draw ship UI elements
-        self.draw_ui(screen)
-    
-    def draw_ui(self, screen):
-        """Draw HUD elements"""
-        # Draw thrust meter
-        pygame.draw.rect(screen, (50, 50, 50), (10, SCREEN_HEIGHT - 30, 100, 20))
-        pygame.draw.rect(screen, (255, 165, 0), 
-                       (10, SCREEN_HEIGHT - 30, int(self.thrust / self.max_thrust * 100), 20))
-        
-        # Draw fuel meter
-        pygame.draw.rect(screen, (50, 50, 50), (120, SCREEN_HEIGHT - 30, 100, 20))
-        pygame.draw.rect(screen, (0, 255, 0), 
-                       (120, SCREEN_HEIGHT - 30, int(self.fuel / self.max_fuel * 100), 20))
-        
-        # Draw labels
-        font = pygame.font.Font(None, 20)
-        thrust_text = font.render(f"Thrust: {int(self.thrust / self.max_thrust * 100)}%", True, (255, 255, 255))
-        fuel_text = font.render(f"Fuel: {int(self.fuel)}%", True, (255, 255, 255))
-        screen.blit(thrust_text, (10, SCREEN_HEIGHT - 50))
-        screen.blit(fuel_text, (120, SCREEN_HEIGHT - 50))
 
 class AsteroidFrontier:
     def __init__(self):
         self.game_state = GameState.MAIN_MENU
-        self.player = PlayerCharacter("Dex", x=SCREEN_WIDTH // 2, y=SCREEN_HEIGHT // 2)
+        self.player = PlayerCharacter("New_Droid", x=SCREEN_WIDTH // 2, y=SCREEN_HEIGHT // 2)
         
         # Create camera
         self.camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -262,8 +127,11 @@ class AsteroidFrontier:
         
         # Create solar system map
         self.system_map = self.create_system_map()
-        self.space_travel = SpaceTravel(self.system_map, self.player)
         
+         # Space travel initialization
+        self.space_travel = None  # Will be created when entering space
+        self.in_space_mode = False
+
         # Current level/map
         self.current_level = None
         
@@ -600,7 +468,6 @@ class AsteroidFrontier:
         except (FileNotFoundError, json.JSONDecodeError) as e:
             print(f"Error loading items: {e}")
             return []
-
 
     def load_location_npcs(self, location_id):
         """Load NPCs for a specific location from JSON data"""
@@ -1009,39 +876,70 @@ class AsteroidFrontier:
         return False
 
     def handle_events(self):
-        """Process game events 3/4/25"""
+        """Process game events, space mvp 3/7/25"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
         
             if event.type == pygame.KEYDOWN:
+                 
+                # Main menu Enter key handling
+                if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
+                    print("Enter key pressed at main menu, transitioning to OVERWORLD")
+                    self.game_state = GameState.OVERWORLD
+                    return True
+
+                # Handle escape key safely
                 if event.key == pygame.K_ESCAPE:
-                    if self.game_state == GameState.MAIN_MENU:
+                    if self.game_state == GameState.SPACE_TRAVEL:
+                        # Ask for confirmation before exiting space mode
+                        # For now, just go back to the last location
+                        if self.current_level and 'name' in self.current_level:
+                            self.load_location(self.current_level['name'])
+                            self.game_state = GameState.OVERWORLD
+                            self.in_space_mode = False
+                        else:
+                            # Fallback to main menu
+                            self.game_state = GameState.MAIN_MENU
+                    elif self.game_state == GameState.MAIN_MENU:
+                        return False
+                    # Other states...
+                    elif self.game_state == GameState.MAIN_MENU:
                         return False
                     elif self.game_state == GameState.TRAVEL_MENU:
+                        print("Escape from travel menu, returning to OVERWORLD")
                         self.game_state = GameState.OVERWORLD
+                        return True
                     else:
                         self.game_state = GameState.MAIN_MENU
             
-                # Handle travel menu number key inputs
+                # Safe travel menu input handling
                 if self.game_state == GameState.TRAVEL_MENU:
-                    # Print debug info to diagnose the issue
-                    print(f"Key pressed in travel menu: {event.key}")
-                    print(f"Available options: {self.travel_options}")
-                
-                    # Check for number keys 1-9
-                    if pygame.K_1 <= event.key <= pygame.K_9:
-                        index = event.key - pygame.K_1
-                        print(f"Selected index: {index}")
-                    
-                        if index < len(self.travel_options):
-                            destination = self.travel_options[index]
-                            print(f"Selected destination: {destination}")
-                            self.travel_to_location(destination)
-                        else:
-                            print(f"Invalid selection: index {index} out of range")
+                    try:
+                        # Number keys 1-9
+                        if pygame.K_1 <= event.key <= pygame.K_9:
+                            index = event.key - pygame.K_1
+                            print(f"Travel menu selection: index {index}")
+                        
+                            if 0 <= index < len(self.travel_options):
+                                destination = self.travel_options[index]
+                                print(f"Selected destination: {destination}")
+                            
+                                # First change state to avoid issues
+                                self.game_state = GameState.OVERWORLD
+                            
+                                # Then initiate travel
+                                success = self.travel_to_location(destination)
+                                if not success:
+                                    print(f"Travel to {destination} failed!")
+                                    # No state change needed, already set to OVERWORLD
+                            else:
+                                print(f"Invalid selection index: {index}")
+                    except Exception as e:
+                        print(f"ERROR in travel menu handling: {e}")
+                        self.game_state = GameState.OVERWORLD  # Recover gracefully
             
-                # Other key handlers
+                # Your other key handlers here...
                 if event.key == pygame.K_i:
                     self.show_inventory = not self.show_inventory
             
@@ -1054,10 +952,6 @@ class AsteroidFrontier:
                 # Handle dialogue key input
                 if self.dialogue_manager.is_dialogue_active():
                     self.dialogue_manager.handle_key(event.key)
-            
-                # Main menu activation
-                if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
-                    self.game_state = GameState.OVERWORLD
         
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
@@ -1075,7 +969,18 @@ class AsteroidFrontier:
     
     def update(self, dt):
         """Update game state 3/4/25"""
-        if self.game_state == GameState.OVERWORLD:
+        """Update game state space mvp 3/7/25"""
+        if self.game_state == GameState.SPACE_TRAVEL:
+            # Update space travel
+            keys = pygame.key.get_pressed()
+            self.space_travel.update(keys, dt)
+        
+            # Check if player is trying to dock
+            if keys[pygame.K_e] and self.space_travel.near_location:
+                location_id = self.space_travel.near_location
+                self.dock_at_location(location_id)
+    
+        elif self.game_state == GameState.OVERWORLD:
             # Update player
             keys = pygame.key.get_pressed()
             self.player.update(keys, dt, self.current_level["walls"] if self.current_level else None)
@@ -1088,7 +993,7 @@ class AsteroidFrontier:
 
             # Handle T key only if near exit
             if self.near_exit and keys[pygame.K_t]:
-                self.show_travel_options()
+                    self.show_travel_options()
             
             # Check for NPC interaction via E key
             if keys[pygame.K_e]:
@@ -1106,15 +1011,11 @@ class AsteroidFrontier:
             # Check if dialogue has ended
             if not self.dialogue_manager.is_dialogue_active():
                 self.game_state = GameState.OVERWORLD
-        
-        elif self.game_state == GameState.SPACE_TRAVEL:
-            # Updates space travel
-            self.space_travel.update(dt)
 
-        elif self.game_state == GameState.TRAVEL_MENU:
+            elif self.game_state == GameState.TRAVEL_MENU:
             # You can add travel menu updates here if needed
             # This could include animating options, updating highlights, etc.
-            pass
+                pass
 
     def show_travel_options(self):
         """Show available travel destinations"""
@@ -1209,38 +1110,51 @@ class AsteroidFrontier:
         return False
 
     def travel_to_location(self, location_id):
-        """Travel to a new location 3/4/25"""
+        """Travel to a new location, 3/7/25"""
         print(f"Attempting to travel to {location_id}")
     
-        # Check for special "space" location
-        if location_id == "space":
-            return self.enter_space()
-
-        # Verify this is a valid destination
-        available_destinations = self.get_available_destinations()
-        if location_id not in available_destinations:
-            print(f"Error: {location_id} is not a valid destination")
-            return False
-    
-        # In a full implementation, you might show a travel animation or cutscene
-        # For now, just load the new location directly
-        success = self.load_location(location_id)
-    
-        if success:
-            # Reset game state
+        try:
+            # Special handling for space
+            if location_id == "space":
+                print("Destination is space, calling enter_space()")
+                success = self.enter_space()
+                return success
+        
+            # Verify this is a valid destination
+            available_destinations = self.get_available_destinations()
+            if location_id not in available_destinations:
+                print(f"Error: {location_id} is not a valid destination")
+                return False
+        
+            # In a full implementation, you might show a travel animation or cutscene
+            # For now, just load the new location directly
+            success = self.load_location(location_id)
+        
+            if success:
+                # Reset game state explicitly
+                self.game_state = GameState.OVERWORLD
+                print(f"Successfully traveled to {location_id}")
+                return True
+            else:
+                print(f"Failed to travel to {location_id}")
+                # Stay in overworld if travel failed
+                return False
+            
+        except Exception as e:
+            print(f"ERROR in travel_to_location: {e}")
+            # Recover gracefully
             self.game_state = GameState.OVERWORLD
-            print(f"Successfully traveled to {location_id}")
-            return True
-        else:
-            print(f"Failed to travel to {location_id}")
-            # Stay in travel menu if travel failed
             return False
         
     def draw(self):
-        """Render the game"""
+        """Render the game, space mvp 3/7/25"""
         screen.fill(SPACE_BG)
+
+        if self.game_state == GameState.SPACE_TRAVEL:
+            # Draw space travel
+            self.space_travel.draw(screen)
         
-        if self.game_state == GameState.MAIN_MENU:
+        elif self.game_state == GameState.MAIN_MENU:
             self.draw_main_menu()
     
         elif self.game_state in [GameState.OVERWORLD, GameState.DIALOGUE, GameState.TRAVEL_MENU]:
@@ -1287,6 +1201,8 @@ class AsteroidFrontier:
                 self.draw_travel_menu()
     
         elif self.game_state == GameState.SPACE_TRAVEL:
+            # Add this debug print
+            print("Drawing space travel from main draw method")
             # Draw space travel screen
             self.space_travel.draw(screen)
     
@@ -1465,6 +1381,9 @@ class AsteroidFrontier:
         """Update space travel game state 3/4/25"""
         if self.game_state != GameState.SPACE_TRAVEL:
             return
+
+        # Debug
+        print("Updating space travel...")
     
         # Update player ship
         keys = pygame.key.get_pressed()
@@ -1499,7 +1418,6 @@ class AsteroidFrontier:
             int(self.player_ship.y - SCREEN_HEIGHT // 2)
     )
 
-
     def dock_at_location(self, location_id):
         """Dock the ship at a location and transition to that level 3/4/25"""
         print(f"Docking at {location_id}")
@@ -1519,36 +1437,44 @@ class AsteroidFrontier:
         else:
             print(f"Failed to dock at {location_id}")
 
-
     def draw_space_travel(self, screen):
-        """Draw the space travel view 3/4/25"""
+        """debug Draw the space travel view with direct screen access 3/4/25"""
         if self.game_state != GameState.SPACE_TRAVEL:
             return
     
-        # Draw space map
-        self.space_map.draw(screen, self.camera_pos)
+        print("Drawing space travel...")
     
-        # Draw player ship
-        self.player_ship.draw(screen, self.camera_pos)
-    
-        # Show docking prompt if near a location
-        if self.near_location:
-            font = pygame.font.Font(None, 24)
-            location_name = self.space_map.locations[self.near_location]['name']
-            prompt = font.render(f"Press E to dock at {location_name}", True, (0, 255, 0))
-            screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 50))
-    
-        # Show map prompt
-        font = pygame.font.Font(None, 20)
-        map_prompt = font.render("Press M for system map", True, (200, 200, 200))
-        screen.blit(map_prompt, (SCREEN_WIDTH - map_prompt.get_width() - 10, 10))
-
+        try:
+            # Get direct screen surface
+            screen_surface = pygame.display.get_surface()
+            if screen_surface is None:
+                print("ERROR: No display surface available!")
+                return
+            
+            # Fill with obvious color
+            screen_surface.fill((255, 0, 0))  # Bright red
+        
+            # Draw a big test shape
+            pygame.draw.rect(screen_surface, (0, 255, 0), (200, 150, 400, 300))  # Green rectangle
+        
+            # Draw text
+            font = pygame.font.Font(None, 48)
+            text = font.render("SPACE TEST", True, (255, 255, 255))
+            screen_surface.blit(text, (300, 250))
+        
+            # Force immediate update
+            pygame.display.update()
+        
+            print("Space drawing successful!")
+        except Exception as e:
+            print(f"SPACE DRAWING ERROR: {e}")
 
     def init_space_map(self):
         """Initialize the space map with all locations 3/4/25"""
         self.space_map = SpaceMap(10000, 8000)  # Large enough for the solar system
     
         # Add all locations from your location data
+        location_count = 0
         for loc in self.locations_data:
             # Skip the "space" location itself
             if loc.get('id') == 'space':
@@ -1579,7 +1505,10 @@ class AsteroidFrontier:
                 'color': color,
                 'faction': loc.get('faction', 'independent')
             })
+            location_count += 1
     
+        print(f"Added {location_count} locations to space map")
+        
         # Initialize player ship in center of map
         self.player_ship = PlayerShip(self.space_map.width // 2, self.space_map.height // 2)
         self.camera_pos = (
@@ -1587,53 +1516,140 @@ class AsteroidFrontier:
             self.player_ship.y - SCREEN_HEIGHT // 2
         )
         self.near_location = None
-
+        print("Space map initialization complete")
 
     def enter_space(self):
-        """Transition from a location to space travel mode 3/4/25"""
+        """Transition to space travel mode, space mvp 3/7/25"""
         print("Entering space travel mode")
     
-        # Initialize space map if not done already
-        if not hasattr(self, 'space_map') or not self.space_map:
-            self.init_space_map()
+        try:
+            # Initialize space travel system
+            print("Creating SpaceTravel instance")
+            self.space_travel = SpaceTravel(SCREEN_WIDTH, SCREEN_HEIGHT)
+        
+            # Add locations from your game data
+            print("Adding locations to space travel")
+            for loc in self.locations_data:
+                if loc.get('id') != 'space':  # Skip the space location itself
+                    self.space_travel.add_location(
+                        loc.get('id'),
+                        loc.get('name', 'Unknown'),
+                        random.randint(-3000, 3000),  # Random x position
+                        random.randint(-3000, 3000),  # Random y position
+                        (200, 200, 200)  # Default color
+                    )
+        
+            # Set game state
+            self.game_state = GameState.SPACE_TRAVEL
+            print("Space travel mode activated successfully")
+            return True
+        
+        except Exception as e:
+            print(f"ERROR initializing space travel: {e}")
+            return False
+
+    def dock_at_location(self, location_id):
+        """Dock at a location from space mode"""
+        print(f"Docking at {location_id}")
     
-        # If coming from a specific location, position the ship near that location
-        if self.current_level and 'name' in self.current_level:
-            current_location_id = self.current_level['name']
-            if current_location_id in self.space_map.locations:
-                location = self.space_map.locations[current_location_id]
-                # Position ship just outside the location
-                self.player_ship.x = location['position'][0] + 50
-                self.player_ship.y = location['position'][1] + 50
+        # Exit space mode
+        self.in_space_mode = False
+    
+        # Load the selected location
+        success = self.load_location(location_id)
+    
+        if success:
+            # Change game state
+            self.game_state = GameState.OVERWORLD
+            print(f"Successfully docked at {location_id}")
+            return True
+        else:
+            print(f"Failed to dock at {location_id}")
+            # Stay in space mode if loading failed
+            self.game_state = GameState.SPACE_TRAVEL
+            return False
+
+    def test_game_states(self):
+        """Test function to verify game state transitions work correctly 3/4/25"""
+        print("\n--- RUNNING GAME STATE TEST ---")
+    
+        # Get the current state
+        old_state = self.game_state
+        print(f"Current game state: {self.game_state}")
+    
+        # Try changing to each state and rendering a test screen
+        for state in [GameState.MAIN_MENU, GameState.OVERWORLD, GameState.DIALOGUE, 
+                  GameState.INVENTORY, GameState.TRAVEL_MENU, GameState.SPACE_TRAVEL]:
+        
+            # Skip current state
+            if state == old_state:
+                continue
             
-                # Update camera
-                self.camera_pos = (
-                    self.player_ship.x - SCREEN_WIDTH // 2, 
-                    self.player_ship.y - SCREEN_HEIGHT // 2
-                )
+            print(f"Testing transition to state: {state}")
+        
+            # Set the state
+            self.game_state = state
+        
+            # Draw a test screen for this state
+            self._draw_test_screen(f"TEST: {state}")
+        
+            # Give a moment to see it
+            pygame.time.delay(1000)
     
-        # Change game state
-        self.game_state = GameState.SPACE_TRAVEL
-        return True
+        # Restore original state
+        print(f"Restoring original state: {old_state}")
+        self.game_state = old_state
+    
+        print("--- GAME STATE TEST COMPLETE ---\n")
+
+    def _draw_test_screen(self, message):
+        """Draw a simple test screen with message 3/4/25"""
+        # Get the screen surface
+        screen = pygame.display.get_surface()
+    
+        # Fill with a color based on hash of the message (for variety)
+        color_seed = sum(ord(c) for c in message)
+        color = ((color_seed * 123) % 255, (color_seed * 45) % 255, (color_seed * 67) % 255)
+        screen.fill(color)
+    
+        # Draw the message
+        font = pygame.font.Font(None, 48)
+        text = font.render(message, True, (255, 255, 255))
+        screen.blit(text, (screen.get_width() // 2 - text.get_width() // 2, 
+                           screen.get_height() // 2 - text.get_height() // 2))
+    
+        # Update the display
+        pygame.display.flip()
+        print(f"Drew test screen for: {message}")
 
 def main():
+    """Main game loop, 3/7/25"""
     # Create the game
     game = AsteroidFrontier()
     
+    # Add test key: Press Y to run game state test
+    print("Press Y to run game state test")
+    
     # Game loop
     running = True
+    clock = pygame.time.Clock()
     while running:
         # Get delta time
         dt = clock.tick(FPS) / 1000.0
         
-        # Handle events
-        running = game.handle_events()
+         # Handle events
+        event_result = game.handle_events()
+        if event_result is False:  # Check if event handling requests exit
+            running = False
         
         # Update game state
         game.update(dt)
         
         # Draw everything
         game.draw()
+        
+        # Ensure the display is updated
+        pygame.display.flip()
     
     # Clean up
     pygame.quit()
