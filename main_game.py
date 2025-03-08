@@ -137,10 +137,15 @@ class AsteroidFrontier:
         
         # Create locations
         self.locations = self.create_locations()
-        
-        # Load initial location
+        self.docked_location = "psyche_township"
+
+        # Load player location
         self.load_location("psyche_township")
         self.near_exit = False  # Track if player is near an exit
+        self.near_helm = False  # Track if player is near the helm
+        
+        self.near_repair = False  # Track if player is near a repair point
+        self.current_repair_point = None
         
         # UI elements
         self.font = pygame.font.Font(None, 24)
@@ -433,7 +438,38 @@ class AsteroidFrontier:
             # Update camera with map size
             self.camera.set_map_size(map_width, map_height)
         
-            return level
+            # At the end, add special handling for helm tiles in ship cabin
+            if map_file == "mvp_ship_cabin.csv":
+                # Store raw layout for easier access
+                self.current_level["layout"] = []
+        
+                # Open the map file again to read raw layout
+                try:
+                    map_path = os.path.join('assets', 'maps', map_file)
+                    with open(map_path, 'r') as file:
+                        for line in file:
+                            # Skip comments and empty lines
+                            if line.strip().startswith('#') or not line.strip():
+                                continue
+                    
+                            # Add the row to the layout
+                            self.current_level["layout"].append(line.strip())
+                    
+                    print(f"Loaded raw layout with {len(self.current_level['layout'])} rows")
+            
+                    # Mark helm tiles specially
+                    for y, row in enumerate(self.current_level["layout"]):
+                        for x, tile in enumerate(row):
+                            if tile == 'H':  # Helm tile
+                                # Find the sprite at this position and mark it
+                                for sprite in self.current_level["all_sprites"]:
+                                    if sprite.rect.x == x * TILE_SIZE and sprite.rect.y == y * TILE_SIZE:
+                                        sprite.tile_type = 'helm'
+                                        print(f"Marked helm tile at ({x}, {y})")
+                except Exception as e:
+                    print(f"Error loading raw layout: {e}")
+    
+            return self.current_level
     
         except Exception as e:
             print(f"Error loading map {map_file}: {e}")
@@ -851,7 +887,7 @@ class AsteroidFrontier:
         return level
     
     def check_exit_collision(self):
-        """Check if player is colliding with an exit tile 3/4/25"""
+        """Check if player is colliding with an exit tile, 3/8/25"""
         # Make sure we have the objects sprite group
         if "objects" not in self.current_level or not self.current_level["objects"]:
             return False
@@ -871,13 +907,13 @@ class AsteroidFrontier:
             distance = (dx**2 + dy**2)**0.5
         
             # If within interaction range
-            if distance < TILE_SIZE * 1.5:  # More forgiving distance check
+            if distance < TILE_SIZE * 1.5:
                 self.near_exit = True
             
                 # Only show travel menu if T key is pressed
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_t]:
-                     # Special handling for ship cabin
+                    # Special handling for ship cabin
                     if self.current_level and self.current_level.get("name") == "ship_cabin":
                         print("Exit from ship cabin detected")
                         self.process_ship_cabin_exit()
@@ -988,9 +1024,49 @@ class AsteroidFrontier:
         return True
     
     def update(self, dt):
-        """Update game state 3/4/25"""
-        """Update game state space mvp 3/7/25"""
-        if self.game_state == GameState.SPACE_TRAVEL:
+        """Update game state with ship interactions, 3/8/25"""
+        if self.game_state == GameState.OVERWORLD:
+            # Update player
+            keys = pygame.key.get_pressed()
+            self.player.update(keys, dt, self.current_level["walls"] if self.current_level else None)
+        
+            # Update NPCs
+            self.npcs.update(dt, self.player)
+        
+            # Check for repair interactions in EVA
+            if self.current_level and self.current_level.get("name") == "ship_eva":
+                self.check_repair_interaction()
+            
+                # Check for return to ship
+                if keys[pygame.K_ESCAPE]:
+                    self.end_eva()
+                    return
+            
+            # Check for exit collision
+            self.check_exit_collision()
+        
+            # Check for ship interactions
+            if self.current_level and self.current_level.get("name") == "ship_cabin":
+                # Only check ship interactions if we're in the cabin
+                result = self.check_ship_interactions()
+                if result:
+                    # If interaction successful, we might have changed state
+                    return
+        
+            # Handle E key for NPC interaction
+            if keys[pygame.K_e]:
+                for npc in self.npcs:
+                    if pygame.sprite.collide_rect(self.player, npc):
+                        self.dialogue_manager.start_dialogue(npc, self.player)
+                        self.game_state = GameState.DIALOGUE
+                        break
+    
+        elif self.game_state == GameState.DIALOGUE:
+            # Check if dialogue has ended
+            if not self.dialogue_manager.is_dialogue_active():
+                self.game_state = GameState.OVERWORLD
+    
+        elif self.game_state == GameState.SPACE_TRAVEL:
             # Update space travel
             keys = pygame.key.get_pressed()
             self.space_travel.update(keys, dt)
@@ -1000,42 +1076,9 @@ class AsteroidFrontier:
                 location_id = self.space_travel.near_location
                 self.dock_at_location(location_id)
     
-        elif self.game_state == GameState.OVERWORLD:
-            # Update player
-            keys = pygame.key.get_pressed()
-            self.player.update(keys, dt, self.current_level["walls"] if self.current_level else None)
-            
-            # Update NPCs
-            self.npcs.update(dt, self.player)
-
-            # Check for exit collision
-            self.check_exit_collision()
-
-            # Handle T key only if near exit
-            if self.near_exit and keys[pygame.K_t]:
-                    self.show_travel_options()
-            
-            # Check for NPC interaction via E key
-            if keys[pygame.K_e]:
-                for npc in self.npcs:
-                    if pygame.sprite.collide_rect(self.player, npc):
-                        self.dialogue_manager.start_dialogue(npc, self.player)
-                        self.game_state = GameState.DIALOGUE
-                        break
-        
-        elif self.game_state == GameState.DIALOGUE:
-            # Even in dialogue mode, we should continue to update the background elements
-            # This ensures the game doesn't freeze
-            self.npcs.update(dt, None)  # Update NPCs but don't pass player to avoid interactions
-     
-            # Check if dialogue has ended
-            if not self.dialogue_manager.is_dialogue_active():
-                self.game_state = GameState.OVERWORLD
-
-            elif self.game_state == GameState.TRAVEL_MENU:
-            # You can add travel menu updates here if needed
-            # This could include animating options, updating highlights, etc.
-                pass
+        elif self.game_state == GameState.TRAVEL_MENU:
+            # Nothing to update for travel menu
+            pass
 
     def show_travel_options(self):
         """Show available travel destinations"""
@@ -1044,7 +1087,7 @@ class AsteroidFrontier:
         print(f"Travel options: {self.travel_options}")  # Debug
 
     def get_available_destinations(self):
-        """Get a list of locations the player can travel to from the current location 3/4/25"""
+        """Get a list of locations the player can travel to from the current location, ship_cabin 3/8/25"""
         valid_destinations = []
     
         # Get current location ID
@@ -1054,6 +1097,19 @@ class AsteroidFrontier:
             return valid_destinations
     
         print(f"Finding destinations from: {current_location_id}")
+    
+        # Special handling for ship cabin
+        if current_location_id == "ship_cabin":
+            # If docked, player can disembark to the docked location
+            if hasattr(self, 'docked_location') and self.docked_location:
+                valid_destinations.append(self.docked_location)
+                print(f"Can disembark to: {self.docked_location}")
+        
+            # Always add EVA option
+            valid_destinations.append("eva")
+            print("Can perform EVA")
+        
+            return valid_destinations
     
         # Find current location in data
         current_location = None
@@ -1072,30 +1128,27 @@ class AsteroidFrontier:
                         map_file = loc.get('map_file', f"{connected_id}.csv")
                         map_path = os.path.join('assets', 'maps', map_file)
                     
-                        if os.path.exists(map_path):
+                        if os.path.exists(map_path) or connected_id == "space":
                             valid_destinations.append(connected_id)
-                            print(f"Valid destination found: {connected_id} (map: {map_file})")
+                            print(f"Valid destination found: {connected_id}")
                         else:
                             print(f"Warning: Map file not found for {connected_id}: {map_path}")
         else:
             # Use hardcoded connections if not found in data
             default_connections = {
-                "psyche_township": ["shipyard_station"],
-                "shipyard_station": ["psyche_township", "space"],
-                "rusty_rocket": ["ceres_port"],
-                "ceres_port": ["rusty_rocket", "space"],
-                "pallas_wardenhouse": ["the_core_museum", "space"],
-                "the_core_museum": ["pallas_wardenhouse"]
+                "psyche_township": ["shipyard_station", "ship_cabin"],
+                "shipyard_station": ["psyche_township", "ship_cabin"],
+                "rusty_rocket": ["ceres_port", "ship_cabin"],
+                "ceres_port": ["rusty_rocket", "ship_cabin"],
+                "pallas_wardenhouse": ["the_core_museum", "ship_cabin"],
+                "the_core_museum": ["pallas_wardenhouse", "ship_cabin"]
             }
         
             # Check the default connections (only add ones that exist)
             if current_location_id in default_connections:
                 for dest_id in default_connections[current_location_id]:
-                    # Verify map file exists
-                    map_file = f"{dest_id}.csv"
-                    map_path = os.path.join('assets', 'maps', map_file)
-                
-                    if os.path.exists(map_path):
+                    # Verify map file exists (except for special locations)
+                    if dest_id in ["ship_cabin", "space", "eva"] or os.path.exists(os.path.join('assets', 'maps', f"{dest_id}.csv")):
                         valid_destinations.append(dest_id)
                         print(f"Valid default destination: {dest_id}")
     
@@ -1104,10 +1157,11 @@ class AsteroidFrontier:
             # Always allow returning to psyche_township as a failsafe
             valid_destinations.append("psyche_township")
             print("No valid destinations found - adding psyche_township as failsafe")
-
-        # Almost all locations should be able to access space
-        if "space" not in valid_destinations:
-            valid_destinations.append("space")
+    
+        # Add ship cabin as an option if not already there (player can return to ship)
+        if "ship_cabin" not in valid_destinations and current_location_id != "ship_cabin":
+            valid_destinations.append("ship_cabin")
+            print("Added ship_cabin as destination")
     
         print(f"Available destinations: {valid_destinations}")
         return valid_destinations
@@ -1130,40 +1184,60 @@ class AsteroidFrontier:
         return False
 
     def travel_to_location(self, location_id):
-        """Travel to a new location, 3/7/25"""
+        """Travel to a new location with special handling for ship-related destinations, 3/8/25"""
         print(f"Attempting to travel to {location_id}")
     
-        try:
-            # Special handling for space
-            if location_id == "space":
-                print("Destination is space, calling enter_space()")
-                success = self.enter_space()
-                return success
-        
-            # Verify this is a valid destination
-            available_destinations = self.get_available_destinations()
-            if location_id not in available_destinations:
-                print(f"Error: {location_id} is not a valid destination")
-                return False
-        
-            # In a full implementation, you might show a travel animation or cutscene
-            # For now, just load the new location directly
-            success = self.load_location(location_id)
-        
-            if success:
-                # Reset game state explicitly
-                self.game_state = GameState.OVERWORLD
-                print(f"Successfully traveled to {location_id}")
-                return True
+        # Special handling for ship cabin
+        if location_id == "ship_cabin":
+            # Going to ship
+            print("Boarding the ship")
+            self.enter_ship_cabin()
+            return True
+    
+        # Special handling for EVA
+        if location_id == "eva":
+            print("Starting EVA operation")
+            return self.perform_eva()
+    
+        # Special handling for space
+        if location_id == "space":
+            # This should now be handled at the helm console in the ship
+            print("Warning: Space travel should be initiated from the ship's helm")
+            return False
+    
+        # Check if we're in the ship cabin and trying to disembark
+        if self.current_level and self.current_level.get("name") == "ship_cabin":
+            if hasattr(self, 'docked_location') and self.docked_location == location_id:
+                # Disembarking to the docked location
+                print(f"Disembarking to {location_id}")
+                # Clear the docked location since we're leaving the ship
+                self.docked_location = None
             else:
-                print(f"Failed to travel to {location_id}")
-                # Stay in overworld if travel failed
+                # If we're trying to go somewhere we're not docked, we need to go to space first
+                print("Cannot travel directly to that location - not docked there")
                 return False
-            
-        except Exception as e:
-            print(f"ERROR in travel_to_location: {e}")
-            # Recover gracefully
+    
+        # Verify this is a valid destination
+        available_destinations = self.get_available_destinations()
+        if location_id not in available_destinations:
+            print(f"Error: {location_id} is not a valid destination")
+            return False
+    
+        # Regular location loading
+        success = self.load_location(location_id)
+    
+        if success:
+            # If traveling to a location, dock the ship there
+            if location_id not in ["ship_cabin", "space", "eva"]:
+                self.docked_location = location_id
+                print(f"Ship is now docked at {location_id}")
+        
+            # Reset game state
             self.game_state = GameState.OVERWORLD
+            print(f"Successfully traveled to {location_id}")
+            return True
+        else:
+            print(f"Failed to travel to {location_id}")
             return False
         
     def draw(self):
@@ -1255,21 +1329,40 @@ class AsteroidFrontier:
         screen.blit(quit_text, quit_rect)
     
     def draw_ui(self):
-        """Draw UI elements"""
+        """Draw UI elements with ship-specific prompts, 3/8/25"""
         font = pygame.font.Font(None, 24)
-        
+    
         # Health bar
         health_text = font.render(f"Health: {self.player.health}/{self.player.max_health}", True, WHITE)
         screen.blit(health_text, (10, 10))
-        
+    
         # Credits
         money_text = font.render(f"Credits: {self.player.credits}", True, WHITE)
         screen.blit(money_text, (10, 40))
-        
+    
         # Current location
         location_name = self.current_level['name'].replace("_", " ").title() if self.current_level else "Unknown"
+    
+        # Special names for EVA
+        if location_name == "Ship Eva":
+            location_name = "Ship Exterior (EVA)"
+        
+        # Add docked status for ship cabin
+        if location_name == "Ship Cabin" and hasattr(self, 'docked_location') and self.docked_location:
+            docked_at = self.docked_location.replace("_", " ").title()
+            location_name = f"Ship Cabin (Docked at {docked_at})"
+    
         location_text = font.render(f"Location: {location_name}", True, WHITE)
         screen.blit(location_text, (SCREEN_WIDTH - location_text.get_width() - 10, 10))
+    
+        # Repair prompt for EVA
+        if hasattr(self, 'near_repair') and self.near_repair and hasattr(self, 'current_repair_point'):
+            repair_type = self.current_repair_point.repair_type.title()
+            repair_text = font.render(f"Press E to repair {repair_type} System", True, (0, 255, 0))
+            screen.blit(repair_text, (SCREEN_WIDTH//2 - repair_text.get_width()//2, SCREEN_HEIGHT - 90))
+        
+            hint_text = font.render("(ESC to return to ship)", True, (200, 200, 200))
+            screen.blit(hint_text, (SCREEN_WIDTH//2 - hint_text.get_width()//2, SCREEN_HEIGHT - 60))
         
         # Exit hint - only show if player is near an exit
         if self.near_exit:
@@ -1278,15 +1371,26 @@ class AsteroidFrontier:
                 if hasattr(self, 'docked_location') and self.docked_location:
                     exit_text = font.render(f"Press T to disembark to {self.docked_location.replace('_', ' ').title()}", True, (0, 255, 0))
                 else:
-                    exit_text = font.render("Press T to launch into space", True, (0, 255, 0))
+                    exit_text = font.render("Press T to perform EVA", True, (0, 255, 0))
             else:
                 exit_text = font.render("Press T to travel to a new location", True, (0, 255, 0))
             
             if exit_text:
                 screen.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 60))
-        
+    
+        # Helm interaction prompt
+        if hasattr(self, 'near_helm') and self.near_helm:
+            helm_text = None
+            if hasattr(self, 'docked_location') and self.docked_location:
+                helm_text = font.render(f"Press E to undock and launch into space", True, (0, 255, 255))
+            else:
+                helm_text = font.render("Press E to return to space flight", True, (0, 255, 255))
+            
+            if helm_text:
+                screen.blit(helm_text, (SCREEN_WIDTH//2 - helm_text.get_width()//2, SCREEN_HEIGHT - 90))
+    
         # Controls hint
-        controls = font.render("I: Inventory | M: Map | Q: Quests | E: Interact", True, WHITE)
+        controls = font.render("I: Inventory | M: Map | Q: Quests | E: Interact | T: Travel", True, WHITE)
         screen.blit(controls, (SCREEN_WIDTH//2 - controls.get_width()//2, SCREEN_HEIGHT - 30))
     
     def draw_inventory(self):
@@ -1447,25 +1551,6 @@ class AsteroidFrontier:
             int(self.player_ship.y - SCREEN_HEIGHT // 2)
     )
 
-    # def dock_at_location(self, location_id):
-    #     """Dock the ship at a location and transition to that level 3/4/25"""
-    #     print(f"Docking at {location_id}")
-    
-    #     # Ensure this is a valid location
-    #     if location_id not in self.space_map.locations:
-    #         print(f"Error: Invalid location ID {location_id}")
-    #         return
-    
-    #     # Load the location
-    #     success = self.load_location(location_id)
-    
-    #     if success:
-    #         # Reset game state
-    #         self.game_state = GameState.OVERWORLD
-    #         print(f"Successfully docked at {location_id}")
-    #     else:
-    #         print(f"Failed to dock at {location_id}")
-
     def draw_space_travel(self, screen):
         """debug Draw the space travel view with direct screen access 3/4/25"""
         if self.game_state != GameState.SPACE_TRAVEL:
@@ -1577,27 +1662,6 @@ class AsteroidFrontier:
             print(f"ERROR initializing space travel: {e}")
             return False
 
-    # def dock_at_location(self, location_id):
-    #     """Dock at a location from space mode"""
-    #     print(f"Docking at {location_id}")
-    
-    #     # Exit space mode
-    #     self.in_space_mode = False
-    
-    #     # Load the selected location
-    #     success = self.load_location(location_id)
-    
-    #     if success:
-    #         # Change game state
-    #         self.game_state = GameState.OVERWORLD
-    #         print(f"Successfully docked at {location_id}")
-    #         return True
-    #     else:
-    #         print(f"Failed to dock at {location_id}")
-    #         # Stay in space mode if loading failed
-    #         self.game_state = GameState.SPACE_TRAVEL
-    #         return False
-
     def enter_ship_cabin(self):
         """Transition to ship interior view, 3/8/25"""
         print("Entering ship cabin")
@@ -1647,6 +1711,259 @@ class AsteroidFrontier:
             return self.exit_to_space()
     
         return False
+
+    def process_helm_interaction(self):
+        """Handle player interaction with the ship's helm, 3/8/25"""
+        print("Interacting with ship helm")
+    
+        # Check if we're docked
+        if hasattr(self, 'docked_location') and self.docked_location:
+            # If docked, undock and enter space
+            print(f"Undocking from {self.docked_location}")
+            self.docked_location = None
+            return self.exit_to_space()
+        else:
+            # If already in space, just enter space mode
+            print("Returning to space flight")
+            return self.exit_to_space()
+
+    def check_ship_interactions(self):
+        """Check for interactions with ship components like the helm, 3/8/24"""
+        # Make sure we're in the ship cabin
+        if not self.current_level or self.current_level.get("name") != "ship_cabin":
+            return False
+    
+        # Reset helm proximity state
+        self.near_helm = False
+    
+        # Find helm tiles in the map
+        helm_positions = []
+        for y, row in enumerate(self.current_level.get("layout", [])):
+            for x, tile in enumerate(row):
+                if tile == 'H':  # Helm tile
+                    helm_positions.append((x * TILE_SIZE, y * TILE_SIZE))
+    
+        if not helm_positions:
+            # Search for helm tiles in the map data directly
+            for y in range(len(self.current_level.get("all_sprites", []))):
+                for x in range(len(self.current_level.get("all_sprites", []))):
+                    # Check if this tile has a marker for helm
+                    for sprite in self.current_level["all_sprites"]:
+                        if hasattr(sprite, 'rect') and sprite.rect.x == x * TILE_SIZE and sprite.rect.y == y * TILE_SIZE:
+                            if hasattr(sprite, 'tile_type') and sprite.tile_type == 'helm':
+                                helm_positions.append((x * TILE_SIZE, y * TILE_SIZE))
+    
+        # Debug output
+        print(f"Found {len(helm_positions)} helm positions: {helm_positions}")
+    
+        # Check if player is near any helm position
+        for helm_x, helm_y in helm_positions:
+            # Calculate distance
+            dx = self.player.rect.centerx - (helm_x + TILE_SIZE // 2)
+            dy = self.player.rect.centery - (helm_y + TILE_SIZE // 2)
+            distance = math.sqrt(dx**2 + dy**2)
+        
+            print(f"Player at ({self.player.rect.centerx}, {self.player.rect.centery}), distance to helm: {distance}")
+        
+            # If close enough and E is pressed, interact with helm
+            if distance < TILE_SIZE * 1.5:
+                self.near_helm = True
+            
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_e]:
+                    print("E key pressed near helm, processing interaction")
+                    return self.process_helm_interaction()
+    
+        return False
+    
+    def perform_eva(self):
+        """Start EVA (Extra-Vehicular Activity) mode, 3/8/25"""
+        print("Beginning EVA operations")
+    
+        # Check if we're in ship cabin
+        if not self.current_level or self.current_level.get("name") != "ship_cabin":
+            print("EVA can only be performed from ship cabin")
+            return False
+    
+        # Create a new "level" for EVA
+        self.current_level = {
+            "name": "ship_eva",
+            "walls": pygame.sprite.Group(),
+            "floor": pygame.sprite.Group(),
+            "objects": pygame.sprite.Group(),
+            "all_sprites": pygame.sprite.Group()
+        }
+    
+        # Determine ship exterior dimensions based on ship layout
+        ship_width = 20 * TILE_SIZE  # Slightly larger than actual ship
+        ship_height = 15 * TILE_SIZE  # Slightly larger than actual ship
+    
+        # Create ship exterior
+        ship_exterior = pygame.sprite.Sprite()
+        ship_exterior.image = pygame.Surface((ship_width, ship_height))
+        ship_exterior.image.fill((100, 100, 100))  # Gray ship hull
+    
+        # Draw hull details (simplified)
+        pygame.draw.rect(ship_exterior.image, (80, 80, 80), (2, 2, ship_width - 4, ship_height - 4), 2)
+        pygame.draw.rect(ship_exterior.image, (60, 60, 60), (ship_width // 4, 0, ship_width // 2, 10), 0)  # Top detail
+        pygame.draw.rect(ship_exterior.image, (120, 120, 120), (ship_width // 4, ship_height - 10, ship_width // 2, 10), 0)  # Bottom detail
+    
+        # Create interactive repair points
+        repair_points = []
+    
+        # Add hull damage points
+        for _ in range(3):
+            x = random.randint(ship_width // 10, ship_width - ship_width // 10)
+            y = random.randint(10, ship_height - 10)
+            size = random.randint(10, 20)
+            pygame.draw.rect(ship_exterior.image, (150, 50, 50), (x, y, size, size), 0)  # Red damage point
+        
+            # Create repair point sprite
+            repair_point = pygame.sprite.Sprite()
+            repair_point.rect = pygame.Rect(x, y, size, size)
+            repair_point.repair_type = "hull"
+            repair_points.append(repair_point)
+            self.current_level["objects"].add(repair_point)
+    
+        # Add engine repair point at bottom
+        engine_x = ship_width // 2 - 15
+        engine_y = ship_height - 20
+        pygame.draw.rect(ship_exterior.image, (200, 100, 50), (engine_x, engine_y, 30, 15), 0)  # Orange engine point
+    
+        engine_point = pygame.sprite.Sprite()
+        engine_point.rect = pygame.Rect(engine_x, engine_y, 30, 15)
+        engine_point.repair_type = "engine"
+        repair_points.append(engine_point)
+        self.current_level["objects"].add(engine_point)
+    
+        # Add weapon repair point at sides
+        weapon_x = 10
+        weapon_y = ship_height // 2 - 10
+        pygame.draw.circle(ship_exterior.image, (200, 50, 50), (weapon_x, weapon_y), 12)  # Red weapon point
+    
+        weapon_point = pygame.sprite.Sprite()
+        weapon_point.rect = pygame.Rect(weapon_x - 12, weapon_y - 12, 24, 24)
+        weapon_point.repair_type = "weapon"
+        repair_points.append(weapon_point)
+        self.current_level["objects"].add(weapon_point)
+    
+        # Position the ship in the center
+        ship_exterior.rect = ship_exterior.image.get_rect()
+        ship_exterior.rect.centerx = SCREEN_WIDTH // 2
+        ship_exterior.rect.centery = SCREEN_HEIGHT // 2
+    
+        # Add to level sprites
+        self.current_level["all_sprites"].add(ship_exterior)
+    
+        # Adjust repair point positions to ship position
+        for point in repair_points:
+            point.rect.x += ship_exterior.rect.x
+            point.rect.y += ship_exterior.rect.y
+            point.is_repair_point = True
+    
+        # Place player near the ship
+        self.player.rect.x = ship_exterior.rect.x + ship_width // 2
+        self.player.rect.y = ship_exterior.rect.y + ship_height + 20
+    
+        print(f"EVA mode activated with {len(repair_points)} repair points")
+    
+        return True
+
+    def check_repair_interaction(self):
+        """Check if player is interacting with repair points during EVA, 3/8/25"""
+        # Only check in EVA mode
+        if not self.current_level or self.current_level.get("name") != "ship_eva":
+            return False
+    
+        # Reset flag
+        self.near_repair = False
+        self.current_repair_point = None
+    
+        # Find repair points
+        repair_points = [obj for obj in self.current_level["objects"] if hasattr(obj, 'is_repair_point')]
+    
+        for point in repair_points:
+            # Calculate distance to repair point
+            dx = self.player.rect.centerx - point.rect.centerx
+            dy = self.player.rect.centery - point.rect.centery
+            distance = math.sqrt(dx**2 + dy**2)
+        
+            # If close enough to interact
+            if distance < TILE_SIZE * 2:
+                self.near_repair = True
+                self.current_repair_point = point
+            
+                # Check for E key press
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_e]:
+                    print(f"Repairing {point.repair_type}")
+                    self.perform_repair(point)
+                    return True
+    
+        return False
+
+    def perform_repair(self, repair_point):
+        """Perform repairs on a ship component, 3/8/25"""
+        repair_type = repair_point.repair_type
+    
+        if repair_type == "hull":
+            # Increase hull strength
+            if hasattr(self.space_travel, 'ship'):
+                self.space_travel.ship.hull_strength += 10
+                print(f"Hull repaired. New hull strength: {self.space_travel.ship.hull_strength}")
+        
+            # Visual feedback - color change
+            pygame.draw.rect(self.current_level["all_sprites"].sprites()[0].image, 
+                            (100, 100, 100),  # Restore to hull color
+                            (repair_point.rect.x - self.current_level["all_sprites"].sprites()[0].rect.x,
+                             repair_point.rect.y - self.current_level["all_sprites"].sprites()[0].rect.y,
+                             repair_point.rect.width,
+                             repair_point.rect.height))
+        
+            # Remove this repair point
+            self.current_level["objects"].remove(repair_point)
+    
+        elif repair_type == "engine":
+            # Increase engine power
+            if hasattr(self.space_travel, 'ship'):
+                self.space_travel.ship.thrust_power += 0.05
+                self.space_travel.thrust_power += 0.05
+                print(f"Engine repaired. New thrust power: {self.space_travel.thrust_power}")
+        
+            # Visual feedback
+            pygame.draw.rect(self.current_level["all_sprites"].sprites()[0].image, 
+                            (100, 100, 100),  # Restore to hull color 
+                            (repair_point.rect.x - self.current_level["all_sprites"].sprites()[0].rect.x,
+                             repair_point.rect.y - self.current_level["all_sprites"].sprites()[0].rect.y,
+                             repair_point.rect.width,
+                             repair_point.rect.height))
+        
+            # Remove this repair point
+            self.current_level["objects"].remove(repair_point)
+    
+        elif repair_type == "weapon":
+            # Increase weapon power (for future implementation)
+            print("Weapon system repaired")
+        
+            # Visual feedback
+            pygame.draw.circle(self.current_level["all_sprites"].sprites()[0].image, 
+                              (100, 100, 100),  # Restore to hull color
+                              (repair_point.rect.x - self.current_level["all_sprites"].sprites()[0].rect.x + 12,
+                               repair_point.rect.y - self.current_level["all_sprites"].sprites()[0].rect.y + 12),
+                              12)
+        
+            # Remove this repair point
+            self.current_level["objects"].remove(repair_point)
+    
+        # Check if all repairs are done
+        repair_points = [obj for obj in self.current_level["objects"] if hasattr(obj, 'is_repair_point')]
+        if not repair_points:
+            print("All repairs completed!")
+
+    def end_eva(self):
+        """End EVA and return to ship cabin, 3/8/25"""
+        print("Ending EVA and returning to ship")
+        return self.enter_ship_cabin()
 
     #debug stuff below#
 
