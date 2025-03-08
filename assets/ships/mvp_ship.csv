@@ -1,0 +1,24 @@
+# MVP Ship Layout
+# Legend:
+# E = Empty space
+# H = Hull/Structure
+# C = Cockpit/Helm
+# T = Thruster
+# S = Steering thruster
+# W = Weapon mount
+# P = Power core
+# G = Shield generator
+# O = Cargo hold
+# X = Special equipment
+
+EEEEEEEEEEEEEEEEE
+EEEEEEEWHWEEEEEEE
+EEEEEEHHCHHEEEEEE
+EEEEESHHHHHSEEEEE
+EEEEEHHHOHHHEEEEE
+EEEEEHHHHHHHEEEEE
+EEEEEHHHGHHHEEEEE
+EEEEEHHHPHHHEEEEE
+EEEEEHHHHHHHEEEEE
+EEEEEHTHTHTHEEEEE
+EEEEEEEEEEEEEEEEE
