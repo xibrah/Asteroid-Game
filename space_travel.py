@@ -250,3 +250,113 @@ class SpaceTravel:
     
         hull_text = font.render(f"Hull: {self.ship.hull_strength}", True, (150, 150, 255))
         screen.blit(hull_text, (20, 80))
+
+    def integrate_asteroid_field(self):
+        """Add asteroid field to space travel mode, 3/9/25"""
+        self.asteroid_field = AsteroidField(10000, 8000)
+    
+        # Add weapon fire method
+        def fire_weapon(self, x, y, angle):
+            """Fire weapon in given direction"""
+            # Calculate projectile endpoint
+            weapon_range = 300
+            end_x = x + math.cos(math.radians(angle)) * weapon_range
+            end_y = y + math.sin(math.radians(angle)) * weapon_range
+        
+            # Check for asteroid hits along the path
+            destroyed = self.asteroid_field.handle_weapon_hit(end_x, end_y, 15, 30)
+        
+            # Return information about hits
+            return destroyed
+    
+        self.fire_weapon = fire_weapon.__get__(self)
+    
+        # Add resource collection
+        def update_resource_collection(self):
+            """Collect resources near player"""
+            collected = self.asteroid_field.collect_resources(
+                self.ship_pos[0], self.ship_pos[1], 80
+            )
+        
+            # Display collection messages if needed
+            for resource_name, amount in collected:
+                print(f"Collected {amount} {resource_name}")
+            
+                # You might want to add this to a message queue for UI display
+    
+        self.update_resource_collection = update_resource_collection.__get__(self)
+    
+        # Override update method to include asteroids
+        original_update = self.update
+    
+        def updated_update(self, keys, dt):
+            # Call original update first
+            original_update(keys, dt)
+        
+            # Update asteroid field
+            self.asteroid_field.update(dt, self.ship_pos[0], self.ship_pos[1], 
+                                      self.screen_width, self.screen_height)
+        
+            # Check for resource collection
+            self.update_resource_collection()
+        
+            # Check for asteroid collision with player
+            asteroid = self.asteroid_field.check_player_collision(
+                self.ship_pos[0], self.ship_pos[1], 20
+            )
+        
+            if asteroid:
+                # Player hit an asteroid - apply damage
+                if hasattr(self, 'ship') and hasattr(self.ship, 'hull_strength'):
+                    # Damage based on asteroid size
+                    damage = asteroid.size * 0.2
+                    self.ship.hull_strength -= damage
+                    print(f"Ship took {damage:.1f} damage! Hull strength: {self.ship.hull_strength:.1f}")
+    
+        self.update = updated_update.__get__(self)
+    
+        # Override draw method to include asteroids
+        original_draw = self.draw
+    
+        def updated_draw(self, screen):
+            # Draw asteroids before ship
+            self.asteroid_field.draw(screen, self.camera_offset)
+        
+            # Call original draw
+            original_draw(screen)
+        
+            # Draw UI for resources
+            self.draw_resource_ui(screen)
+    
+        self.draw = updated_draw.__get__(self)
+    
+        # Add resource UI
+        def draw_resource_ui(self, screen):
+            """Draw resource collection UI"""
+            # Get collected resources
+            resources = self.asteroid_field.get_collected_resources()
+        
+            if not resources:
+                return
+            
+           # Draw in top-right corner
+            font = pygame.font.Font(None, 24)
+            y_offset = 10
+        
+            for resource_name, amount in resources.items():
+                # Get resource info
+                resource = self.asteroid_field.resource_registry.get_resource(resource_name)
+                if not resource:
+                    continue
+                
+                # Draw resource info
+                text = font.render(f"{resource_name}: {amount}", True, (255, 255, 255))
+                screen.blit(text, (self.screen_width - text.get_width() - 10, y_offset))
+            
+                # Draw small color indicator
+                pygame.draw.rect(screen, resource.color, 
+                               (self.screen_width - text.get_width() - 25, y_offset + 5, 10, 10))
+            
+                y_offset += 25
+    
+        self.draw_resource_ui = draw_resource_ui.__get__(self)

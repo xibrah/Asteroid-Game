@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "version": "0.1",
+    "timestamp": "2025-03-09T15:30:09.799544",
+    "save_name": "WARDENHOUSE"
+  },
+  "player": {
+    "position": {
+      "x": 442,
+      "y": 384
+    },
+    "health": 100,
+    "max_health": 100,
+    "credits": 0
+  },
+  "current_location": {
+    "id": "wardenhouse",
+    "docked_location": null
+  },
+  "ship": {
+    "hull_strength": 56,
+    "shield_strength": 5.5,
+    "thrust_power": 0.12100000000000001,
+    "rotation_speed": 3.3000000000000003,
+    "max_speed": 4.95
+  },
+  "inventory": {
+    "credits": 0,
+    "items": []
+  },
+  "game_flags": {
+    "tutorial_completed": false
+  },
+  "visited_locations": [
+    "psyche_township"
+  ],
+  "resources": {
+    "metal": 0,
+    "crystal": 0,
+    "fuel": 0
+  }
+}

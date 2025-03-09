@@ -1,11 +1,10 @@
-import json
+﻿import json
 import os
 import datetime
 import pygame
 from pathlib import Path
 
-# Import GameState from game_structure
-from game_structure import GameState
+
 
 class SaveSystem:
     def __init__(self, game):
@@ -356,8 +355,11 @@ class SaveLoadMenu:
         """Refresh the list of save files"""
         self.save_items = game.save_system.get_available_saves()
     
+        # Get the current game state value
+        is_save_menu = game.game_state == 9  # 9 is SAVE_MENU
+    
         # Reset selection if out of bounds
-        if self.selected_index >= len(self.save_items) + (1 if game.game_state == GameState.SAVE_MENU else 0):
+        if self.selected_index >= len(self.save_items) + (1 if is_save_menu else 0):
             self.selected_index = 0
             self.scroll_offset = 0
     

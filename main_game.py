@@ -1054,12 +1054,14 @@ class AsteroidFrontier:
                     self.update_save_load_menus()
                     return True
 
-                # Special handling for EVA mode - check first before other ESC handlers
+                # Special handling for EVA mode
                 if event.key == pygame.K_ESCAPE and self.current_level and self.current_level.get("name") == "ship_eva":
                     print("ESC pressed in EVA mode - returning to ship")
                     self.end_eva()
                     return True
                 
+                # Merchant system?
+
                 # Main menu Enter key handling
                 if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
                     print("Enter key pressed at main menu, transitioning to OVERWORLD")
@@ -1389,27 +1391,7 @@ class AsteroidFrontier:
         elif self.game_state == GameState.MAIN_MENU:
             self.draw_main_menu()
     
-        # Draw save/load menus
-        elif self.game_state in [GameState.SAVE_MENU, GameState.LOAD_MENU]:
-            # First draw the game underneath
-            if self.current_level and "all_sprites" in self.current_level:
-                for sprite in self.current_level["all_sprites"]:
-                    cam_pos = self.camera.apply(sprite)
-                    screen.blit(sprite.image, cam_pos)
-        
-                # Draw NPCs
-                for npc in self.npcs:
-                    cam_pos = self.camera.apply(npc)
-                    screen.blit(npc.image, cam_pos)
-        
-                # Draw player
-                cam_pos = self.camera.apply(self.player)
-                screen.blit(self.player.image, cam_pos)
-    
-            # Then draw the menu overlay
-            if hasattr(self, 'save_load_menu'):
-                self.save_load_menu.draw(screen, self)
-            
+        # Draw Overworld            
         elif self.game_state in [GameState.OVERWORLD, GameState.DIALOGUE, GameState.TRAVEL_MENU]:
             # Draw level with camera offset 3/4/25
             self.camera.update(self.player)
@@ -1453,6 +1435,48 @@ class AsteroidFrontier:
             if self.game_state == GameState.TRAVEL_MENU:
                 self.draw_travel_menu()
     
+        # Draw save/load menus over everything else
+        elif self.game_state in [GameState.SAVE_MENU, GameState.LOAD_MENU]:
+            # First draw the game underneath
+            if self.current_level and "all_sprites" in self.current_level:
+                for sprite in self.current_level["all_sprites"]:
+                    cam_pos = self.camera.apply(sprite)
+                    screen.blit(sprite.image, cam_pos)
+        
+                # Draw NPCs
+                for npc in self.npcs:
+                    cam_pos = self.camera.apply(npc)
+                    screen.blit(npc.image, cam_pos)
+        
+                # Draw player
+                cam_pos = self.camera.apply(self.player)
+                screen.blit(self.player.image, cam_pos)
+    
+            # Then draw the menu overlay
+            if hasattr(self, 'save_load_menu'):
+                self.save_load_menu.draw(screen, self)
+        
+        # Draw merchant interface
+        elif self.game_state == GameState.MERCHANT:
+            # First draw the game underneath
+            if self.current_level and "all_sprites" in self.current_level:
+                for sprite in self.current_level["all_sprites"]:
+                    cam_pos = self.camera.apply(sprite)
+                    screen.blit(sprite.image, cam_pos)
+            
+                # Draw NPCs
+                for npc in self.npcs:
+                    cam_pos = self.camera.apply(npc)
+                    screen.blit(npc.image, cam_pos)
+            
+                # Draw player
+                cam_pos = self.camera.apply(self.player)
+                screen.blit(self.player.image, cam_pos)
+        
+            # Then draw the merchant interface
+            if hasattr(self, 'merchant_system'):
+                self.merchant_system.draw(screen, self)
+
         pygame.display.flip()
     
     def draw_main_menu(self):
@@ -2311,6 +2335,47 @@ class AsteroidFrontier:
                 self.save_load_menu.refresh_save_list(self)
                 self._last_menu_state = self.game_state
                 
+    def initialize_merchant_system(self):
+        """Initialize or get the merchant system, 3/9/25"""
+        if not hasattr(self, 'merchant_system'):
+            self.merchant_system = MerchantSystem(SCREEN_WIDTH, SCREEN_HEIGHT)
+            self.merchant_system.game = self
+    
+        return self.merchant_system
+
+    def enter_merchant_mode(self):
+        """Enter merchant trading mode"""
+        if self.current_level and "name" in self.current_level:
+            self.game_state = GameState.MERCHANT
+        
+            # Initialize merchant if needed
+            self.initialize_merchant_system()
+        
+            return True
+    
+        return False
+                
+    def draw_merchant(self, screen):
+        """Draw the merchant interface if active"""
+        if self.game_state == GameState.MERCHANT:
+            # First draw the game underneath
+            if self.current_level and "all_sprites" in self.current_level:
+                for sprite in self.current_level["all_sprites"]:
+                    cam_pos = self.camera.apply(sprite)
+                    screen.blit(sprite.image, cam_pos)
+            
+                # Draw NPCs
+                for npc in self.npcs:
+                    cam_pos = self.camera.apply(npc)
+                    screen.blit(npc.image, cam_pos)
+            
+                # Draw player
+                cam_pos = self.camera.apply(self.player)
+                screen.blit(self.player.image, cam_pos)
+        
+            # Then draw the merchant interface
+            self.merchant_system.draw(screen, self)
+    
     #debug stuff below#
 
     def test_game_states(self):
@@ -2372,7 +2437,10 @@ def main():
     game = AsteroidFrontier()
     
     # Add save system
-    game.add_save_system()
+    #game.add_save_system()
+    
+    # Initialize gameplay systems
+    game.initialize_systems()
 
     # Add test key: Press Y to run game state test
     print("Press Y to run game state test")
