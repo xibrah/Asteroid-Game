@@ -57,6 +57,9 @@ class GameState:
     GAME_OVER = 6
     SPACE_TRAVEL = 7
     TRAVEL_MENU = 8
+    SAVE_MENU = 9
+    LOAD_MENU = 10
+    MERCHANT = 11
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):

@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "version": "0.1",
+    "timestamp": "2025-03-09T12:58:04.467893",
+    "save_name": "quicksave"
+  },
+  "player": {
+    "position": {
+      "x": 128,
+      "y": 256
+    },
+    "health": 100,
+    "max_health": 100,
+    "credits": 0
+  },
+  "current_location": {
+    "id": "ship_cabin",
+    "docked_location": "psyche_township"
+  },
+  "ship": {
+    "hull_strength": 100,
+    "shield_strength": 0,
+    "thrust_power": 0.1,
+    "rotation_speed": 3,
+    "max_speed": 5
+  },
+  "inventory": {
+    "credits": 0,
+    "items": []
+  },
+  "game_flags": {
+    "tutorial_completed": false
+  },
+  "visited_locations": [
+    "psyche_township"
+  ],
+  "resources": {
+    "metal": 0,
+    "crystal": 0,
+    "fuel": 0
+  }
+}

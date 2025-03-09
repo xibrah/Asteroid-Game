@@ -257,10 +257,10 @@ class Player(Character, pygame.sprite.Sprite):
         }
     
     def update(self, keys, dt, walls=None):
-        """Update player position based on input"""
+        """Update player position based on input, 3/8/25"""
         dx, dy = 0, 0
         movement_direction = None
-        
+    
         # Handle movement input
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             dx = -self.speed
@@ -278,31 +278,50 @@ class Player(Character, pygame.sprite.Sprite):
             dy = self.speed
             movement_direction = "down"
             self.last_direction = "down"
-        
+    
         # Move the player
         if dx != 0 or dy != 0:
             # Try moving horizontally
+            old_x = self.rect.x
             self.rect.x += dx
             if walls:
+                # Check each wall for collision
                 wall_hits = pygame.sprite.spritecollide(self, walls, False)
                 if wall_hits:
+                    # Revert to previous position
                     if dx > 0:  # Moving right
-                        self.rect.right = wall_hits[0].rect.left
+                        self.rect.right = min(wall.rect.left for wall in wall_hits)
                     else:  # Moving left
-                        self.rect.left = wall_hits[0].rect.right
-            
+                        self.rect.left = max(wall.rect.right for wall in wall_hits)
+        
             # Try moving vertically
+            old_y = self.rect.y
             self.rect.y += dy
             if walls:
+                # Check each wall for collision
                 wall_hits = pygame.sprite.spritecollide(self, walls, False)
                 if wall_hits:
+                    # Revert to previous position
                     if dy > 0:  # Moving down
-                        self.rect.bottom = wall_hits[0].rect.top
+                        self.rect.bottom = min(wall.rect.top for wall in wall_hits)
                     else:  # Moving up
-                        self.rect.top = wall_hits[0].rect.bottom
+                        self.rect.top = max(wall.rect.bottom for wall in wall_hits)
         
-        # Update animation
-        self.update_animation(dt, movement_direction)
+            # Update animation
+            if hasattr(self, 'update_animation'):
+                self.update_animation(dt, movement_direction)
+            
+        # Keep player within map boundaries
+        # These checks would use the current level size if available
+        if hasattr(self, 'current_level') and self.current_level:
+            if self.rect.left < 0:
+                self.rect.left = 0
+            if self.rect.right > self.current_level.get("width", 2000):
+                self.rect.right = self.current_level.get("width", 2000)
+            if self.rect.top < 0:
+                self.rect.top = 0
+            if self.rect.bottom > self.current_level.get("height", 2000):
+                self.rect.bottom = self.current_level.get("height", 2000)
     
     def interact(self, npcs):
         """Check for interaction with NPCs"""
