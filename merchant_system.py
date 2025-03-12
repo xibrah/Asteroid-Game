@@ -369,7 +369,7 @@ class MerchantSystem:
         if event.type == pygame.KEYDOWN:
             # Close merchant with Escape
             if event.key == pygame.K_ESCAPE:
-                game.game_state = GameState.OVERWORLD
+                game.game_state = 1
                 return True
             
             # Tab switching

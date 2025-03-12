@@ -19,6 +19,7 @@ from space_travel_system import SystemMap, Location
 from space_travel import SpaceTravel
 from camera import Camera
 from save_system import SaveSystem, SaveLoadMenu
+from merchant_system import MerchantSystem
 
 # Initialize Pygame
 pygame.init()
@@ -167,6 +168,60 @@ class AsteroidFrontier:
         self.camera_pos = (0, 0)
         self.near_location = None
    
+    def initialize_systems(self):
+        """Initialize all game systems, 3/11/25"""
+        print("Initializing game systems...")
+    
+        # Initialize space travel system
+        if not hasattr(self, 'space_travel') or self.space_travel is None:
+            from space_travel import SpaceTravel
+            self.space_travel = SpaceTravel(SCREEN_WIDTH, SCREEN_HEIGHT)
+        
+            # Add locations from your game data
+            print("Adding locations to space travel")
+            for loc in self.locations_data:
+                if loc.get('id') != 'space':  # Skip the space location itself
+                    # Generate a position based on some data from the location
+                    # This ensures locations are consistently positioned
+                    x = hash(loc.get('id', '')) % 3000 - 1500  # Generate x between -1500 and 1500
+                    y = hash(loc.get('name', '')) % 2500 - 1250  # Generate y between -1250 and 1250
+                
+                    # Add location to space travel
+                    self.space_travel.add_location(
+                        loc.get('id'),
+                        loc.get('name', 'Unknown'),
+                        x, y,
+                        (200, 200, 200)  # Default color - could vary based on faction
+                    )
+        
+            # Initialize asteroid field
+            self.space_travel.integrate_asteroid_field()
+            print("Asteroid field integrated into space travel")
+    
+        # Initialize merchant system
+        self.initialize_merchant_system()
+    
+        # Add weapon firing capability to space travel
+        if not hasattr(self, 'last_weapon_fire_time'):
+            self.last_weapon_fire_time = 0
+    
+        # Initialize save system if needed
+        if not hasattr(self, 'save_system'):
+            from save_system import SaveSystem
+            self.save_system = SaveSystem(self)
+            print("Save system initialized")
+    
+        # Track visited locations
+        if not hasattr(self, 'visited_locations'):
+            self.visited_locations = []
+            # Add current location if one exists
+            if self.current_level and "name" in self.current_level:
+                location_id = self.current_level["name"]
+                if location_id not in self.visited_locations:
+                    self.visited_locations.append(location_id)
+    
+        print("All systems initialized")
+        
     def create_default_level(self):
         """Create a minimal default level when other loading methods fail, 3/8/25"""
         print("Creating default level as fallback")
@@ -1022,11 +1077,16 @@ class AsteroidFrontier:
         return False
 
     def handle_events(self):
-        """Process game events, eva mode 3/9/25"""
+        """Process game events, eva mode 3/11/25"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
         
+            # Handle merchant events if in merchant mode
+            if self.game_state == GameState.MERCHANT:
+                if self.handle_merchant_events(event):
+                    continue
+            
             if event.type == pygame.KEYDOWN:
                 
                 # Special key combinations for save/load
@@ -1060,7 +1120,7 @@ class AsteroidFrontier:
                     self.end_eva()
                     return True
                 
-                # Merchant system?
+                # Merchant system
 
                 # Main menu Enter key handling
                 if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
@@ -1153,7 +1213,7 @@ class AsteroidFrontier:
         return True
     
     def update(self, dt):
-        """Update game state with ship interactions, 3/8/25"""
+        """Update game state with ship interactions, 3/11/25"""
         if self.game_state == GameState.OVERWORLD:
             # Update player
             keys = pygame.key.get_pressed()
@@ -1185,6 +1245,9 @@ class AsteroidFrontier:
                 if result:
                     # If interaction successful, we might have changed state
                     return
+
+             # Check for merchant interactions
+            self.check_merchant_interaction()
         
             # Handle E key for NPC interaction
             if keys[pygame.K_e]:
@@ -1203,11 +1266,16 @@ class AsteroidFrontier:
             # Update space travel
             keys = pygame.key.get_pressed()
             self.space_travel.update(keys, dt)
+            self.update_space_travel(dt)
         
             # Check if player is trying to dock
             if keys[pygame.K_e] and self.space_travel.near_location:
                 location_id = self.space_travel.near_location
                 self.dock_at_location(location_id)
+
+        elif self.game_state == GameState.MERCHANT:
+            # Update merchant interface
+            self.update_merchant_menu(dt)
     
         elif self.game_state == GameState.TRAVEL_MENU:
             # Nothing to update for travel menu
@@ -1385,8 +1453,16 @@ class AsteroidFrontier:
 
          # Draw space travel
         if self.game_state == GameState.SPACE_TRAVEL:
+             # Draw space travel system
             self.space_travel.draw(screen)
         
+            # Draw weapon visual effects 
+            self.draw_weapon_visual(screen)
+        
+        elif self.game_state == GameState.MERCHANT:
+            # Draw merchant interface
+            self.draw_merchant(screen)
+
         # Draw Main Menu
         elif self.game_state == GameState.MAIN_MENU:
             self.draw_main_menu()
@@ -1688,44 +1764,46 @@ class AsteroidFrontier:
         screen.blit(instructions, (panel_rect.centerx - instructions.get_width()//2, panel_rect.bottom - 40))
 
     def update_space_travel(self, dt):
-        """Update space travel game state 3/4/25"""
+        """Update space travel mode including weapon firing, 3/11/25"""
         if self.game_state != GameState.SPACE_TRAVEL:
             return
 
         # Debug
-        print("Updating space travel...")
+        #print("Updating space travel...")
     
-        # Update player ship
+        # Update player ship with pressed keys
         keys = pygame.key.get_pressed()
-        self.player_ship.update(keys, dt)
+        #self.player_ship.update(keys, dt)
+        self.space_travel.update(keys, dt)
     
-        # Check for docking with locations
-        for loc_id, location in self.space_map.locations.items():
-            # Calculate distance between ship and location
-            dx = self.player_ship.x - location['position'][0]
-            dy = self.player_ship.y - location['position'][1]
-            distance = math.sqrt(dx*dx + dy*dy)
-        
-            # If close enough, show docking prompt
-            if distance < 30:
-                self.near_location = loc_id
-            
-                # If E key pressed, dock at location
-                if keys[pygame.K_e]:
-                    self.dock_at_location(loc_id)
-                    return
+        # Check for docking
+        if keys[pygame.K_e] and self.space_travel.near_location:
+            location_id = self.space_travel.near_location
+            self.dock_at_location(location_id)
+            return
         
         # Not near any location
         self.near_location = None
     
+        # Add weapon firing with spacebar
+        if keys[pygame.K_SPACE]:
+            self.fire_ship_weapon()
+        
+        # Debug resource info with I key
+        if keys[pygame.K_i]:
+            # Print resource information
+            if hasattr(self.space_travel, 'asteroid_field'):
+                resources = self.space_travel.asteroid_field.get_collected_resources()
+                print(f"Collected resources: {resources}")
+        
         # Handle returning to system map view
         if keys[pygame.K_m]:
             self.show_map = True
     
         # Update camera to follow player ship
         self.camera_pos = (
-            int(self.player_ship.x - SCREEN_WIDTH // 2),
-            int(self.player_ship.y - SCREEN_HEIGHT // 2)
+            int(self.space_travel.ship_pos[0] - SCREEN_WIDTH // 2),
+            int(self.space_travel.ship_pos[1] - SCREEN_HEIGHT // 2)
     )
 
     def draw_space_travel(self, screen):
@@ -1852,13 +1930,24 @@ class AsteroidFrontier:
         return True
 
     def exit_to_space(self):
-        """Exit from cabin to space travel mode, 3/8/25"""
+        """Exit from cabin to space travel mode, 3/11/25"""
         print("Exiting to space")
     
         # Call the enter_space method to initialize space travel
-        self.enter_space()
+        success = self.enter_space()
     
-        return True
+        if success and not hasattr(self, 'player_ship'):
+            # Create the player ship
+            from ship import PlayerShip  # Adjust import as needed
+        
+            # For now, create a simple PlayerShip object as a placeholder
+            self.player_ship = PlayerShip(
+                self.space_travel.ship_pos[0], 
+                self.space_travel.ship_pos[1]
+            )
+            print("Player ship initialized")
+    
+        return success
 
     def dock_at_location(self, location_id):
         """Dock at a location from space mode - modified to go to cabin first, 3/8/25"""
@@ -2374,8 +2463,43 @@ class AsteroidFrontier:
                 screen.blit(self.player.image, cam_pos)
         
             # Then draw the merchant interface
-            self.merchant_system.draw(screen, self)
+            if hasattr(self, 'merchant_system'):
+                self.merchant_system.draw(screen, self)
     
+    def draw_weapon_visual(self, screen):
+        """Draw weapon visual effects, 3/11/25"""
+        if hasattr(self, 'weapon_visual') and self.weapon_visual:
+            # Draw the laser line
+            if self.weapon_visual['current_frame'] < self.weapon_visual['duration']:
+                # Calculate screen positions by applying camera offset from space travel
+                start_x = self.weapon_visual['start'][0] - self.space_travel.camera_offset[0]
+                start_y = self.weapon_visual['start'][1] - self.space_travel.camera_offset[1]
+                end_x = self.weapon_visual['end'][0] - self.space_travel.camera_offset[0]
+                end_y = self.weapon_visual['end'][1] - self.space_travel.camera_offset[1]
+            
+                # Draw the laser
+                pygame.draw.line(
+                    screen,
+                    self.weapon_visual['color'],
+                    (start_x, start_y),
+                    (end_x, end_y),
+                    self.weapon_visual['width']
+                )
+            
+                # Add some glow effect at the end point
+                pygame.draw.circle(
+                    screen,
+                    self.weapon_visual['color'],
+                    (int(end_x), int(end_y)),
+                    5
+                )
+            
+                # Increment frame counter
+                self.weapon_visual['current_frame'] += 1
+            else:
+                # Effect duration finished
+                self.weapon_visual = None
+            
     #debug stuff below#
 
     def test_game_states(self):
@@ -2430,6 +2554,81 @@ class AsteroidFrontier:
         # Update the display
         pygame.display.flip()
         print(f"Drew test screen for: {message}")
+
+    def check_merchant_interaction(self):
+        """Check if player is interacting with a merchant NPC, 3/11/25"""
+        # Make sure we're in the right game state and have NPCs
+        if self.game_state != GameState.OVERWORLD or not hasattr(self, 'npcs'):
+            return False
+    
+        # Get player position
+        player_x, player_y = self.player.rect.x, self.player.rect.y
+    
+        # Check each NPC
+        for npc in self.npcs:
+            # Check if this NPC is a merchant (has shop inventory)
+            is_merchant = False
+        
+            # Check if NPC has shop attribute or shop inventory
+            if hasattr(npc, 'has_shop') and npc.has_shop:
+                is_merchant = True
+            elif hasattr(npc, 'shop_inventory') and npc.shop_inventory:
+                is_merchant = True
+        
+            # Special case - hardcoded merchants for testing
+            if npc.name in ["Township Merchant", "Leo", "Ruby"]:
+                is_merchant = True
+        
+            # If NPC is a merchant and player is close enough
+            if is_merchant:
+                # Calculate distance to NPC
+                npc_x, npc_y = npc.rect.x, npc.rect.y
+                dx = player_x - npc_x
+                dy = player_y - npc_y
+                distance = math.sqrt(dx**2 + dy**2)
+            
+                # If player is close enough to interact
+                if distance < TILE_SIZE * 2:
+                    # Check for T key press
+                    keys = pygame.key.get_pressed()
+                    if keys[pygame.K_t]:
+                        print(f"Interacting with merchant: {npc.name}")
+                        self.enter_merchant_mode()
+                        return True
+                
+                    # Display prompt even if E is not pressed
+                    #self.draw_merchant_prompt(npc.name)
+                    return False
+    
+        return False
+
+    def update_merchant_menu(self, dt):
+        """Update the merchant menu state, 3/11/25"""
+        if self.game_state != GameState.MERCHANT:
+            return
+    
+        # Initialize merchant system if needed
+        if not hasattr(self, 'merchant_system'):
+            self.merchant_system = MerchantSystem(SCREEN_WIDTH, SCREEN_HEIGHT)
+            self.merchant_system.game = self  # Give merchant access to game state
+    
+        # Check for escape key to exit merchant menu
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            self.game_state = GameState.OVERWORLD
+            print("Exiting merchant menu")
+
+    def handle_merchant_events(self, event):
+        """Handle events for the merchant menu, 3/11/25"""
+        if self.game_state != GameState.MERCHANT:
+            return False
+    
+        # Pass the event to the merchant system
+        if hasattr(self, 'merchant_system'):
+            return self.merchant_system.handle_event(event, self)
+    
+        return False
+
 
 def main():
     """Main game loop, 3/9/25"""

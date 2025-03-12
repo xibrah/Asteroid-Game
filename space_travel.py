@@ -2,6 +2,8 @@ import pygame
 import math
 import random
 
+from asteroid import AsteroidField, ResourceRegistry, Asteroid, ResourceParticle
+
 # Space Travel MVP
 class SpaceTravel:
     def __init__(self, screen_width, screen_height):
@@ -154,6 +156,7 @@ class SpaceTravel:
     
         # Draw HUD
         self.draw_hud(screen)
+
 
     def draw_engine_flames(self, screen):
         """Draw engine flames from the thruster tiles with corrected direction"""
