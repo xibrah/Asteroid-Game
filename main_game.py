@@ -2500,6 +2500,75 @@ class AsteroidFrontier:
                 # Effect duration finished
                 self.weapon_visual = None
             
+    def fire_ship_weapon(self):
+        """Fire the ship's weapon at asteroids, 3/12/25"""
+        # Check if the space travel system has asteroid field and fire_weapon method
+        if not hasattr(self.space_travel, 'asteroid_field') or not hasattr(self.space_travel, 'fire_weapon'):
+            print("Weapon systems not available")
+            return False
+    
+        # Get ship position and angle
+        ship_x = self.space_travel.ship_pos[0]
+        ship_y = self.space_travel.ship_pos[1]
+        ship_angle = self.space_travel.ship_angle
+    
+        # Get weapon damage based on upgrades
+        base_damage = 20
+        weapon_level = getattr(self, 'ship_upgrades', {}).get('weapon', 0)
+        damage_multiplier = 1.0 + (weapon_level * 0.3)  # 30% damage increase per level
+        total_damage = base_damage * damage_multiplier
+    
+        # Add cooldown check to prevent rapid-fire
+        current_time = pygame.time.get_ticks()
+        if hasattr(self, 'last_weapon_fire_time') and current_time - self.last_weapon_fire_time < 250:
+            # Weapon on cooldown
+            return False
+    
+        # Store the time of this weapon fire
+        self.last_weapon_fire_time = current_time
+    
+        # Visual feedback - create a laser effect
+        self.create_weapon_visual(ship_x, ship_y, ship_angle)
+    
+        # Call the fire weapon method
+        destroyed_asteroids = self.space_travel.fire_weapon(ship_x, ship_y, ship_angle)
+    
+        # Process results
+        if destroyed_asteroids:
+            # Play sound effect (if you have sound system implemented)
+            # self.play_sound("asteroid_explosion")
+        
+            # Optional: Display some feedback about destroyed asteroids
+            print(f"Destroyed {len(destroyed_asteroids)} asteroids!")
+        
+            return True
+    
+        return False
+
+    def create_weapon_visual(self, ship_x, ship_y, ship_angle):
+        """Create a visual effect for weapon firing, 3/12/25"""
+        import math
+    
+        # Calculate the direction vector based on ship angle
+        angle_rad = math.radians(ship_angle)
+        dir_x = math.sin(angle_rad)
+        dir_y = -math.cos(angle_rad)
+    
+        # Calculate laser endpoint
+        laser_length = 300  # How far the laser extends
+        end_x = ship_x + dir_x * laser_length
+        end_y = ship_y + dir_y * laser_length
+    
+        # Store the laser effect data to be drawn in the next frame
+        self.weapon_visual = {
+            'start': (ship_x, ship_y),
+            'end': (end_x, end_y),
+            'color': (0, 255, 0),  # Green laser
+            'width': 3,
+            'duration': 5,  # Frames the laser will be visible
+            'current_frame': 0
+        }
+                
     #debug stuff below#
 
     def test_game_states(self):

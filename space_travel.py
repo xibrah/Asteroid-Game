@@ -103,6 +103,11 @@ class SpaceTravel:
         self.camera_offset[0] = self.ship_pos[0] - self.screen_width // 2
         self.camera_offset[1] = self.ship_pos[1] - self.screen_height // 2
         
+        # Update asteroid field if it exists
+        if hasattr(self, 'asteroid_field'):
+            self.asteroid_field.update(dt, self.ship_pos[0], self.ship_pos[1], 
+                                      self.screen_width, self.screen_height)
+
         # Check for nearby locations
         self.near_location = None
         for loc_id, location in self.locations.items():
@@ -130,6 +135,10 @@ class SpaceTravel:
                 0 <= screen_y < self.screen_height):
                 pygame.draw.circle(screen, star['color'], (screen_x, screen_y), star['size'])
     
+         # Draw asteroid field if it exists
+        if hasattr(self, 'asteroid_field'):
+            self.asteroid_field.draw(screen, self.camera_offset)
+                
         # Draw locations
         for loc_id, location in self.locations.items():
             # Convert world position to screen position
@@ -147,7 +156,7 @@ class SpaceTravel:
                 text = font.render(location['name'], True, (255, 255, 255))
                 screen.blit(text, (screen_x - text.get_width() // 2, screen_y + 30))
     
-       # Draw the ship using the tile-based rendering
+        # Draw the ship using the tile-based rendering
         self.ship.draw(screen, self.screen_width // 2, self.screen_height // 2, self.ship_angle)
     
         # Draw engine flames if thrusting
