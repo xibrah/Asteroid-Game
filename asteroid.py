@@ -168,26 +168,21 @@ class Asteroid:
     def generate_resources(self):
         """Generate resources contained in this asteroid"""
         resources = {}
-        
-        # Determine resource quantity based on size
-        total_resources = max(1, self.size // 10)
-        
-        # Larger asteroids can have rarer resources
-        max_rarity = 1.0 + (self.size / 30.0) * 2.0  # Scale max rarity with size
-        
-        for _ in range(total_resources):
-            if self.resource_registry:
-                resource = self.resource_registry.get_random_resource(1.0, max_rarity)
-                
-                # Determine amount
-                amount = random.randint(1, max(1, self.size // 15))
-                
-                # Add to resources dictionary
-                if resource.name in resources:
-                    resources[resource.name] += amount
-                else:
-                    resources[resource.name] = amount
-        
+    
+        # Force some basic resources to ensure drops
+        resources["iron"] = random.randint(5, 10)
+        resources["copper"] = random.randint(3, 8)
+    
+        # Add a chance for rarer resources
+        if random.random() < 0.3:  # 30% chance
+            resources["gold"] = random.randint(1, 5)
+    
+        if random.random() < 0.2:  # 20% chance
+            resources["uranium"] = random.randint(1, 3)
+    
+        # Debug
+        print(f"Asteroid will drop: {resources}")
+    
         return resources
     
     def update(self, dt):
@@ -237,6 +232,9 @@ class Asteroid:
                 )
                 particles.append(particle)
         
+        # Debug
+        print(f"Created {len(particles)} resource particles")
+
         return particles
     
     def draw(self, screen, camera_offset):
@@ -402,8 +400,20 @@ class AsteroidField:
             if particle.update(dt):
                 self.resource_particles.remove(particle)
         
-        # Spawn new asteroids if needed
-        self.maintain_asteroid_count(player_x, player_y, view_width, view_height)
+        if len(self.asteroids) == 0:
+            print("No asteroids in field, generating some...")
+            # Force spawn some asteroids near the player
+            for _ in range(5):
+                x = player_x + random.randint(-500, 500)
+                y = player_y + random.randint(-500, 500)
+                size = random.randint(30, 60)
+                asteroid = Asteroid(x, y, size, self.resource_registry)
+                self.asteroids.append(asteroid)
+                print(f"Created asteroid at ({x}, {y}) with size {size}")
+        else:
+            #print(f"Asteroid count: {len(self.asteroids)}")
+            # Spawn new asteroids if needed
+            self.maintain_asteroid_count(player_x, player_y, view_width, view_height)
     
     def maintain_asteroid_count(self, player_x, player_y, view_width, view_height, target_count=15):
         """Ensure there are enough asteroids in the field"""
@@ -495,7 +505,10 @@ class AsteroidField:
         """Collect resource particles near the player"""
         collected = []
         
-        for particle in self.resource_particles:
+         # Debug
+        particle_count_before = len(self.resource_particles)
+
+        for particle in self.resource_particles[:]:  # Use a copy for safe modification
             if particle.collected:
                 continue
                 
@@ -511,9 +524,9 @@ class AsteroidField:
                 particle.vel_y = math.sin(angle) * speed
                 
                 # Check if particle reaches player
-                if distance < 10:
+                if distance < 15: # Smaller distance for actual collection
                     # Mark as collected
-                    particle.collect()
+                    particle.collected = True
                     
                     # Add to collected resources
                     if particle.resource_name in self.collected_resources:
@@ -522,18 +535,67 @@ class AsteroidField:
                         self.collected_resources[particle.resource_name] = particle.amount
                     
                     collected.append((particle.resource_name, particle.amount))
+                    
+                    print(f"Resource collected: {particle.resource_name} x{particle.amount}")
+                
+                    # Remove the particle
+                    self.resource_particles.remove(particle)
         
+        # Debug
+        particle_count_after = len(self.resource_particles)
+        if particle_count_before != particle_count_after:
+            print(f"Resource particles: {particle_count_before} -> {particle_count_after}")
+
         return collected
     
     def draw(self, screen, camera_offset):
-        """Draw all asteroids and resource particles"""
-        # Draw asteroids
+        """Draw all asteroids and resource particles, 3/12/25"""
+        # Debug info
+        #print(f"Camera offset: {camera_offset}")
+    
+        # Draw a reference grid at world origin
+        origin_x = 0 - camera_offset[0]
+        origin_y = 0 - camera_offset[1]
+        pygame.draw.line(screen, (255, 0, 0), (origin_x, origin_y-100), (origin_x, origin_y+100), 3)
+        pygame.draw.line(screen, (255, 0, 0), (origin_x-100, origin_y), (origin_x+100, origin_y), 3)
+    
+        # Draw asteroids as simple colored circles for testing
         for asteroid in self.asteroids:
-            asteroid.draw(screen, camera_offset)
+            # Calculate screen position
+            screen_x = int(asteroid.x - camera_offset[0])
+            screen_y = int(asteroid.y - camera_offset[1])
         
+            # Check if on or near screen
+            if (-asteroid.size <= screen_x <= screen.get_width() + asteroid.size and
+                -asteroid.size <= screen_y <= screen.get_height() + asteroid.size):
+            
+                # Draw bright outline for visibility
+                pygame.draw.circle(screen, (255, 0, 0), (screen_x, screen_y), asteroid.size, 3)
+            
+                # Add text label for easier identification
+                font = pygame.font.Font(None, 20)
+                label = font.render(f"Asteroid", True, (255, 255, 0))
+                screen.blit(label, (screen_x - label.get_width()//2, screen_y - label.get_height()//2))
+            
+                # Try to draw the actual asteroid image too
+                if hasattr(asteroid, 'image'):
+                    try:
+                        screen.blit(asteroid.image, (screen_x - asteroid.size, screen_y - asteroid.size))
+                    except Exception as e:
+                        print(f"Error drawing asteroid image: {e}")
+    
         # Draw resource particles
         for particle in self.resource_particles:
-            particle.draw(screen, camera_offset)
+            # Calculate screen position
+            screen_x = int(particle.x - camera_offset[0])
+            screen_y = int(particle.y - camera_offset[1])
+        
+            # Check if on screen
+            if (0 <= screen_x <= screen.get_width() and
+                0 <= screen_y <= screen.get_height()):
+            
+                # Draw as a bright circle
+                pygame.draw.circle(screen, (0, 255, 0), (screen_x, screen_y), 5)
     
     def get_collected_resources(self):
         """Get dictionary of collected resources"""

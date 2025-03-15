@@ -25,8 +25,8 @@ from merchant_system import MerchantSystem
 pygame.init()
 
 # Game constants
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1024
+SCREEN_HEIGHT = 768
 TILE_SIZE = 32
 FPS = 60
 
@@ -195,8 +195,8 @@ class AsteroidFrontier:
                     )
         
             # Initialize asteroid field
-            self.space_travel.integrate_asteroid_field()
-            print("Asteroid field integrated into space travel")
+            #self.space_travel.integrate_asteroid_field()
+            #print("Asteroid field integrated into space travel")
     
         # Initialize merchant system
         self.initialize_merchant_system()
@@ -1787,7 +1787,13 @@ class AsteroidFrontier:
     
         # Add weapon firing with spacebar
         if keys[pygame.K_SPACE]:
-            self.fire_ship_weapon()
+            # Use the fire_weapon method from SpaceTravel class
+            ship_x = self.space_travel.ship_pos[0]
+            ship_y = self.space_travel.ship_pos[1]
+            ship_angle = self.space_travel.ship_angle
+        
+            # This will handle the weapon firing logic
+            self.space_travel.fire_weapon(ship_x, ship_y, ship_angle)
         
         # Debug resource info with I key
         if keys[pygame.K_i]:
