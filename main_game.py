@@ -11,12 +11,12 @@ import json
 # Import game modules
 # In a real project, these would be separate files
 from game_structure import Game, GameState, Player, NPC
-from map_system import Map, Camera, Level, Tile
+from map_system import Map, Camera, Level, Tile, Camera
 from character_system import Character, Player as PlayerCharacter, NPC as NPCCharacter
 from dialogue_quest_system import DialogueManager, QuestManager, Quest
 from item_inventory import Inventory, ItemFactory
 from space_travel_system import SystemMap, Location
-from space_travel import SpaceTravel
+from space_travel import SpaceTravel, AsteroidField
 from camera import Camera
 from save_system import SaveSystem, SaveLoadMenu
 from merchant_system import MerchantSystem
@@ -77,38 +77,6 @@ class SpaceMap:
         self.locations[location_id] = location_data
         print(f"Added location: {location_id} at {location_data['position']}")
 
-class PlayerShip:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.speed = 5
-        self.rotation = 0  # In degrees, 0 = up
-        
-        # For collision detection
-        self.rect = pygame.Rect(x - 10, y - 10, 20, 20)
-    def update(self, keys, dt):
-        """Update ship position based on input"""
-        dx = 0
-        dy = 0
-        
-        # Simplified movement for testing
-        if keys[pygame.K_LEFT]:
-            dx = -self.speed
-        if keys[pygame.K_RIGHT]:
-            dx = self.speed
-        if keys[pygame.K_UP]:
-            dy = -self.speed
-        if keys[pygame.K_DOWN]:
-            dy = self.speed
-        
-        # Update position
-        self.x += dx
-        self.y += dy
-        
-        # Update collision rectangle
-        self.rect.x = self.x - 10
-        self.rect.y = self.y - 10
-
 class AsteroidFrontier:
     def __init__(self):
         self.game_state = GameState.MAIN_MENU
@@ -167,6 +135,9 @@ class AsteroidFrontier:
         self.player_ship = None
         self.camera_pos = (0, 0)
         self.near_location = None
+
+         # Initialize resource tracking
+        self.collected_resources = {}
    
     def initialize_systems(self):
         """Initialize all game systems, 3/11/25"""
@@ -177,6 +148,16 @@ class AsteroidFrontier:
             from space_travel import SpaceTravel
             self.space_travel = SpaceTravel(SCREEN_WIDTH, SCREEN_HEIGHT)
         
+             # Apply ship upgrades if any exist
+            if hasattr(self, 'ship_upgrades'):
+                # Apply cargo upgrade
+                if 'cargo' in self.ship_upgrades:
+                    cargo_level = self.ship_upgrades['cargo']
+                    # Set cargo capacity based on level
+                    cargo_capacity = 100 * (cargo_level + 1)  # Level 0 = 100, Level 1 = 200, etc.
+                    self.space_travel.ship.cargo_capacity = cargo_capacity
+                    print(f"Applied cargo upgrade level {cargo_level}: Capacity {cargo_capacity}")
+            
             # Add locations from your game data
             print("Adding locations to space travel")
             for loc in self.locations_data:
@@ -222,65 +203,65 @@ class AsteroidFrontier:
     
         print("All systems initialized")
         
-    def create_default_level(self):
-        """Create a minimal default level when other loading methods fail, 3/8/25"""
-        print("Creating default level as fallback")
-        self.current_level = {
-            "name": "default_level",
-            "walls": pygame.sprite.Group(),
-            "floor": pygame.sprite.Group(),
-            "objects": pygame.sprite.Group(),
-            "all_sprites": pygame.sprite.Group(),
-            "width": SCREEN_WIDTH,
-            "height": SCREEN_HEIGHT,
-            "player_start": (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-        }
+    # def create_default_level(self):
+    #     """Create a minimal default level when other loading methods fail, 3/8/25"""
+    #     print("Creating default level as fallback")
+    #     self.current_level = {
+    #         "name": "default_level",
+    #         "walls": pygame.sprite.Group(),
+    #         "floor": pygame.sprite.Group(),
+    #         "objects": pygame.sprite.Group(),
+    #         "all_sprites": pygame.sprite.Group(),
+    #         "width": SCREEN_WIDTH,
+    #         "height": SCREEN_HEIGHT,
+    #         "player_start": (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    #     }
     
-        # Create a basic room with walls and a floor
-        wall_size = TILE_SIZE
-        room_width = SCREEN_WIDTH - (wall_size * 2)
-        room_height = SCREEN_HEIGHT - (wall_size * 2)
+    #     # Create a basic room with walls and a floor
+    #     wall_size = TILE_SIZE
+    #     room_width = SCREEN_WIDTH - (wall_size * 2)
+    #     room_height = SCREEN_HEIGHT - (wall_size * 2)
     
-        # Create floor
-        floor = pygame.sprite.Sprite()
-        floor.image = pygame.Surface((room_width, room_height))
-        floor.image.fill((50, 50, 50))  # Dark gray floor
-        floor.rect = floor.image.get_rect()
-        floor.rect.x = wall_size
-        floor.rect.y = wall_size
-        self.current_level["floor"].add(floor)
-        self.current_level["all_sprites"].add(floor)
+    #     # Create floor
+    #     floor = pygame.sprite.Sprite()
+    #     floor.image = pygame.Surface((room_width, room_height))
+    #     floor.image.fill((50, 50, 50))  # Dark gray floor
+    #     floor.rect = floor.image.get_rect()
+    #     floor.rect.x = wall_size
+    #     floor.rect.y = wall_size
+    #     self.current_level["floor"].add(floor)
+    #     self.current_level["all_sprites"].add(floor)
     
-        # Create walls (top, right, bottom, left)
-        wall_positions = [
-            (0, 0, SCREEN_WIDTH, wall_size),  # Top
-            (SCREEN_WIDTH - wall_size, 0, wall_size, SCREEN_HEIGHT),  # Right
-            (0, SCREEN_HEIGHT - wall_size, SCREEN_WIDTH, wall_size),  # Bottom
-            (0, 0, wall_size, SCREEN_HEIGHT)  # Left
-        ]
+    #     # Create walls (top, right, bottom, left)
+    #     wall_positions = [
+    #         (0, 0, SCREEN_WIDTH, wall_size),  # Top
+    #         (SCREEN_WIDTH - wall_size, 0, wall_size, SCREEN_HEIGHT),  # Right
+    #         (0, SCREEN_HEIGHT - wall_size, SCREEN_WIDTH, wall_size),  # Bottom
+    #         (0, 0, wall_size, SCREEN_HEIGHT)  # Left
+    #     ]
     
-        for x, y, w, h in wall_positions:
-            wall = pygame.sprite.Sprite()
-            wall.image = pygame.Surface((w, h))
-            wall.image.fill((100, 100, 100))  # Gray walls
-            wall.rect = wall.image.get_rect()
-            wall.rect.x = x
-            wall.rect.y = y
-            self.current_level["walls"].add(wall)
-            self.current_level["all_sprites"].add(wall)
+    #     for x, y, w, h in wall_positions:
+    #         wall = pygame.sprite.Sprite()
+    #         wall.image = pygame.Surface((w, h))
+    #         wall.image.fill((100, 100, 100))  # Gray walls
+    #         wall.rect = wall.image.get_rect()
+    #         wall.rect.x = x
+    #         wall.rect.y = y
+    #         self.current_level["walls"].add(wall)
+    #         self.current_level["all_sprites"].add(wall)
     
-        # Add an exit
-        exit_tile = pygame.sprite.Sprite()
-        exit_tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-        exit_tile.image.fill((0, 255, 0))  # Green for exit
-        exit_tile.rect = exit_tile.image.get_rect()
-        exit_tile.rect.x = SCREEN_WIDTH // 2
-        exit_tile.rect.y = SCREEN_HEIGHT - (wall_size * 2)
-        exit_tile.is_exit = True
-        self.current_level["objects"].add(exit_tile)
-        self.current_level["all_sprites"].add(exit_tile)
+    #     # Add an exit
+    #     exit_tile = pygame.sprite.Sprite()
+    #     exit_tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #     exit_tile.image.fill((0, 255, 0))  # Green for exit
+    #     exit_tile.rect = exit_tile.image.get_rect()
+    #     exit_tile.rect.x = SCREEN_WIDTH // 2
+    #     exit_tile.rect.y = SCREEN_HEIGHT - (wall_size * 2)
+    #     exit_tile.is_exit = True
+    #     self.current_level["objects"].add(exit_tile)
+    #     self.current_level["all_sprites"].add(exit_tile)
     
-        print("Default level created successfully")
+    #     print("Default level created successfully")
         
     def load_npcs(self):
         """Load NPC data from JSON file"""
@@ -396,205 +377,205 @@ class AsteroidFrontier:
     
         return npc
 
-    def load_map_from_file(self, map_file):
-        """Load a map from a text file, 3/8/25"""
-        # At the beginning of the function
-        print(f"Attempting to load map file: {map_file}")
-        try:
-            # Determine path for the map file
-            map_path = os.path.join('assets', 'maps', map_file)
-            print(f"Looking for map at: {map_path}")
+    # def load_map_from_file(self, map_file):
+    #     """Load a map from a text file, 3/8/25"""
+    #     # At the beginning of the function
+    #     print(f"Attempting to load map file: {map_file}")
+    #     try:
+    #         # Determine path for the map file
+    #         map_path = os.path.join('assets', 'maps', map_file)
+    #         print(f"Looking for map at: {map_path}")
         
-            # Check if file exists
-            if not os.path.exists(map_path):
-                print(f"Map file not found: {map_path}")
-                return self.create_test_level(map_file.split('.')[0])  # Fallback to test level
+    #         # Check if file exists
+    #         if not os.path.exists(map_path):
+    #             print(f"Map file not found: {map_path}")
+    #             return self.create_test_level(map_file.split('.')[0])  # Fallback to test level
         
-            # Initialize level data
-            print(f"Map OK: {map_path}")
-            level = {}
-            level["name"] = map_file.split('.')[0]
-            level["walls"] = pygame.sprite.Group()
-            level["floor"] = pygame.sprite.Group()
-            level["objects"] = pygame.sprite.Group()
-            level["doors"] = pygame.sprite.Group()
-            level["all_sprites"] = pygame.sprite.Group()
-            level["npc_positions"] = {}  # Dictionary to store NPC starting positions
-            level["player_start"] = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)  # Default position
+    #         # Initialize level data
+    #         print(f"Map OK: {map_path}")
+    #         level = {}
+    #         level["name"] = map_file.split('.')[0]
+    #         level["walls"] = pygame.sprite.Group()
+    #         level["floor"] = pygame.sprite.Group()
+    #         level["objects"] = pygame.sprite.Group()
+    #         level["doors"] = pygame.sprite.Group()
+    #         level["all_sprites"] = pygame.sprite.Group()
+    #         level["npc_positions"] = {}  # Dictionary to store NPC starting positions
+    #         level["player_start"] = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)  # Default position
         
-            # Map from characters to colors/types
-            tile_colors = {
-                'W': (100, 100, 100),  # Wall - Gray
-                'F': (50, 50, 50),     # Floor - Dark Gray
-                'D': (150, 75, 0),     # Door - Brown
-                'T': (120, 60, 20),    # Table - Dark Brown
-                'C': (160, 82, 45),    # Chair - Sienna
-                'B': (139, 69, 19),    # Bar/Bed - Saddle Brown
-                'S': (160, 120, 90),   # Storage - Tan
-                'M': (70, 70, 90),     # Machine/Military - Blue-Gray
-                'G': (173, 216, 230),  # Glass/Guard - Light Blue
-                'P': (169, 169, 169),  # Prison Cell - Dark Gray
-                'V': (135, 206, 235),  # Viewport - Sky Blue
-                'H': (105, 105, 105),  # Hangar - Dim Gray
-                'X': (192, 192, 192),  # Exhibit - Silver
-                'R': (128, 128, 128),  # Robot - Gray
-                'E': (0, 128, 0)       # Exit - Green
-            }
+    #         # Map from characters to colors/types
+    #         tile_colors = {
+    #             'W': (100, 100, 100),  # Wall - Gray
+    #             'F': (50, 50, 50),     # Floor - Dark Gray
+    #             'D': (150, 75, 0),     # Door - Brown
+    #             'T': (120, 60, 20),    # Table - Dark Brown
+    #             'C': (160, 82, 45),    # Chair - Sienna
+    #             'B': (139, 69, 19),    # Bar/Bed - Saddle Brown
+    #             'S': (160, 120, 90),   # Storage - Tan
+    #             'M': (70, 70, 90),     # Machine/Military - Blue-Gray
+    #             'G': (173, 216, 230),  # Glass/Guard - Light Blue
+    #             'P': (169, 169, 169),  # Prison Cell - Dark Gray
+    #             'V': (135, 206, 235),  # Viewport - Sky Blue
+    #             'H': (105, 105, 105),  # Hangar - Dim Gray
+    #             'X': (192, 192, 192),  # Exhibit - Silver
+    #             'R': (128, 128, 128),  # Robot - Gray
+    #             'E': (0, 128, 0)       # Exit - Green
+    #         }
         
-            # Read the map file
-            with open(map_path, 'r') as file:
-                y = 0
-                for line in file:
-                    # Skip comments and empty lines
-                    if line.strip().startswith('#') or not line.strip():
-                        continue
+    #         # Read the map file
+    #         with open(map_path, 'r') as file:
+    #             y = 0
+    #             for line in file:
+    #                 # Skip comments and empty lines
+    #                 if line.strip().startswith('#') or not line.strip():
+    #                     continue
                 
-                    # Process each character in the line
-                    for x, char in enumerate(line.strip()):
-                        # Create a position
-                        pos_x = x * TILE_SIZE
-                        pos_y = y * TILE_SIZE
+    #                 # Process each character in the line
+    #                 for x, char in enumerate(line.strip()):
+    #                     # Create a position
+    #                     pos_x = x * TILE_SIZE
+    #                     pos_y = y * TILE_SIZE
                     
-                        # Create the appropriate tile based on the character
-                        if char == 'W':  # Wall
-                            wall = pygame.sprite.Sprite()
-                            wall.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                            wall.image.fill(tile_colors['W'])
-                            wall.rect = wall.image.get_rect()
-                            wall.rect.x = pos_x
-                            wall.rect.y = pos_y
-                            level["walls"].add(wall)
-                            level["all_sprites"].add(wall)
+    #                     # Create the appropriate tile based on the character
+    #                     if char == 'W':  # Wall
+    #                         wall = pygame.sprite.Sprite()
+    #                         wall.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                         wall.image.fill(tile_colors['W'])
+    #                         wall.rect = wall.image.get_rect()
+    #                         wall.rect.x = pos_x
+    #                         wall.rect.y = pos_y
+    #                         level["walls"].add(wall)
+    #                         level["all_sprites"].add(wall)
                     
-                        elif char == 'D':  # Door
-                            door = pygame.sprite.Sprite()
-                            door.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                            door.image.fill(tile_colors['D'])
-                            door.rect = door.image.get_rect()
-                            door.rect.x = pos_x
-                            door.rect.y = pos_y
-                            level["doors"].add(door)
-                            level["all_sprites"].add(door)
+    #                     elif char == 'D':  # Door
+    #                         door = pygame.sprite.Sprite()
+    #                         door.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                         door.image.fill(tile_colors['D'])
+    #                         door.rect = door.image.get_rect()
+    #                         door.rect.x = pos_x
+    #                         door.rect.y = pos_y
+    #                         level["doors"].add(door)
+    #                         level["all_sprites"].add(door)
                     
-                        elif char == '@':  # Player starting position
-                            floor = pygame.sprite.Sprite()
-                            floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                            floor.image.fill(tile_colors['F'])
-                            floor.rect = floor.image.get_rect()
-                            floor.rect.x = pos_x
-                            floor.rect.y = pos_y
-                            level["floor"].add(floor)
-                            level["all_sprites"].add(floor)
+    #                     elif char == '@':  # Player starting position
+    #                         floor = pygame.sprite.Sprite()
+    #                         floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                         floor.image.fill(tile_colors['F'])
+    #                         floor.rect = floor.image.get_rect()
+    #                         floor.rect.x = pos_x
+    #                         floor.rect.y = pos_y
+    #                         level["floor"].add(floor)
+    #                         level["all_sprites"].add(floor)
                         
-                            # Store player start position
-                            level["player_start"] = (pos_x, pos_y)
+    #                         # Store player start position
+    #                         level["player_start"] = (pos_x, pos_y)
                     
-                        elif char in '123456789':  # NPC position
-                            floor = pygame.sprite.Sprite()
-                            floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                            floor.image.fill(tile_colors['F'])
-                            floor.rect = floor.image.get_rect()
-                            floor.rect.x = pos_x
-                            floor.rect.y = pos_y
-                            level["floor"].add(floor)
-                            level["all_sprites"].add(floor)
+    #                     elif char in '123456789':  # NPC position
+    #                         floor = pygame.sprite.Sprite()
+    #                         floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                         floor.image.fill(tile_colors['F'])
+    #                         floor.rect = floor.image.get_rect()
+    #                         floor.rect.x = pos_x
+    #                         floor.rect.y = pos_y
+    #                         level["floor"].add(floor)
+    #                         level["all_sprites"].add(floor)
                         
-                            # Store NPC position
-                            level["npc_positions"][int(char)] = (pos_x, pos_y)
-                            print(f"Found NPC position {char} at ({pos_x}, {pos_y})")
+    #                         # Store NPC position
+    #                         level["npc_positions"][int(char)] = (pos_x, pos_y)
+    #                         print(f"Found NPC position {char} at ({pos_x}, {pos_y})")
                     
-                        elif char == 'E':  # Exit
-                            exit_tile = pygame.sprite.Sprite()
-                            exit_tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                            exit_tile.image.fill((0, 255, 0))  # Bright green for visibility
-                            exit_tile.rect = exit_tile.image.get_rect()
-                            exit_tile.rect.x = pos_x
-                            exit_tile.rect.y = pos_y
-                            exit_tile.is_exit = True  # Make sure this attribute is set
-                            level["objects"].add(exit_tile)
-                            level["all_sprites"].add(exit_tile)
-                            print(f"Created exit tile at ({pos_x}, {pos_y})")
+    #                     elif char == 'E':  # Exit
+    #                         exit_tile = pygame.sprite.Sprite()
+    #                         exit_tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                         exit_tile.image.fill((0, 255, 0))  # Bright green for visibility
+    #                         exit_tile.rect = exit_tile.image.get_rect()
+    #                         exit_tile.rect.x = pos_x
+    #                         exit_tile.rect.y = pos_y
+    #                         exit_tile.is_exit = True  # Make sure this attribute is set
+    #                         level["objects"].add(exit_tile)
+    #                         level["all_sprites"].add(exit_tile)
+    #                         print(f"Created exit tile at ({pos_x}, {pos_y})")
                     
-                        elif char in tile_colors:  # Other defined tile types
-                            tile = pygame.sprite.Sprite()
-                            tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                            tile.image.fill(tile_colors[char])
-                            tile.rect = tile.image.get_rect()
-                            tile.rect.x = pos_x
-                            tile.rect.y = pos_y
+    #                     elif char in tile_colors:  # Other defined tile types
+    #                         tile = pygame.sprite.Sprite()
+    #                         tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                         tile.image.fill(tile_colors[char])
+    #                         tile.rect = tile.image.get_rect()
+    #                         tile.rect.x = pos_x
+    #                         tile.rect.y = pos_y
                         
-                            if char == 'F':
-                                level["floor"].add(tile)
-                            else:
-                                level["objects"].add(tile)
+    #                         if char == 'F':
+    #                             level["floor"].add(tile)
+    #                         else:
+    #                             level["objects"].add(tile)
                             
-                            level["all_sprites"].add(tile)
+    #                         level["all_sprites"].add(tile)
                     
-                        else:  # Default to floor for any other character
-                            floor = pygame.sprite.Sprite()
-                            floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                            floor.image.fill(tile_colors['F'])
-                            floor.rect = floor.image.get_rect()
-                            floor.rect.x = pos_x
-                            floor.rect.y = pos_y
-                            level["floor"].add(floor)
-                            level["all_sprites"].add(floor)
+    #                     else:  # Default to floor for any other character
+    #                         floor = pygame.sprite.Sprite()
+    #                         floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                         floor.image.fill(tile_colors['F'])
+    #                         floor.rect = floor.image.get_rect()
+    #                         floor.rect.x = pos_x
+    #                         floor.rect.y = pos_y
+    #                         level["floor"].add(floor)
+    #                         level["all_sprites"].add(floor)
                 
-                    y += 1  # Move to next row
+    #                 y += 1  # Move to next row
         
-            # Calculate map size from the loaded map data
-            map_width = 0
-            map_height = 0
+    #         # Calculate map size from the loaded map data
+    #         map_width = 0
+    #         map_height = 0
         
-            # Find furthest right wall and lowest wall
-            for sprite in level["all_sprites"]:
-                map_width = max(map_width, sprite.rect.right)
-                map_height = max(map_height, sprite.rect.bottom)
+    #         # Find furthest right wall and lowest wall
+    #         for sprite in level["all_sprites"]:
+    #             map_width = max(map_width, sprite.rect.right)
+    #             map_height = max(map_height, sprite.rect.bottom)
         
-            # Store map dimensions in level data
-            level["width"] = max(map_width, SCREEN_WIDTH)  # Ensure at least screen width
-            level["height"] = max(map_height, SCREEN_HEIGHT)  # Ensure at least screen height
+    #         # Store map dimensions in level data
+    #         level["width"] = max(map_width, SCREEN_WIDTH)  # Ensure at least screen width
+    #         level["height"] = max(map_height, SCREEN_HEIGHT)  # Ensure at least screen height
         
-            # Update camera with map size
-            self.camera.set_map_size(level["width"], level["height"])
+    #         # Update camera with map size
+    #         self.camera.set_map_size(level["width"], level["height"])
         
-            # Add special handling for helm tiles in ship cabin
-            if map_file == "mvp_ship_cabin.csv":
-                # Store raw layout for easier access
-                level["layout"] = []
+    #         # Add special handling for helm tiles in ship cabin
+    #         if map_file == "mvp_ship_cabin.csv":
+    #             # Store raw layout for easier access
+    #             level["layout"] = []
             
-                # Open the map file again to read raw layout
-                try:
-                    map_path = os.path.join('assets', 'maps', map_file)
-                    with open(map_path, 'r') as file:
-                        for line in file:
-                            # Skip comments and empty lines
-                            if line.strip().startswith('#') or not line.strip():
-                                continue
+    #             # Open the map file again to read raw layout
+    #             try:
+    #                 map_path = os.path.join('assets', 'maps', map_file)
+    #                 with open(map_path, 'r') as file:
+    #                     for line in file:
+    #                         # Skip comments and empty lines
+    #                         if line.strip().startswith('#') or not line.strip():
+    #                             continue
                         
-                            # Add the row to the layout
-                            level["layout"].append(line.strip())
+    #                         # Add the row to the layout
+    #                         level["layout"].append(line.strip())
                 
-                    print(f"Loaded raw layout with {len(level['layout'])} rows")
+    #                 print(f"Loaded raw layout with {len(level['layout'])} rows")
                 
-                    # Mark helm tiles specially
-                    for y, row in enumerate(level["layout"]):
-                        for x, tile in enumerate(row):
-                            if tile == 'H':  # Helm tile
-                                # Find the sprite at this position and mark it
-                                for sprite in level["all_sprites"]:
-                                    if sprite.rect.x == x * TILE_SIZE and sprite.rect.y == y * TILE_SIZE:
-                                        sprite.tile_type = 'helm'
-                                        print(f"Marked helm tile at ({x}, {y})")
-                except Exception as e:
-                    print(f"Error loading raw layout: {e}")
-                    # Continue without the raw layout - not critical
+    #                 # Mark helm tiles specially
+    #                 for y, row in enumerate(level["layout"]):
+    #                     for x, tile in enumerate(row):
+    #                         if tile == 'H':  # Helm tile
+    #                             # Find the sprite at this position and mark it
+    #                             for sprite in level["all_sprites"]:
+    #                                 if sprite.rect.x == x * TILE_SIZE and sprite.rect.y == y * TILE_SIZE:
+    #                                     sprite.tile_type = 'helm'
+    #                                     print(f"Marked helm tile at ({x}, {y})")
+    #             except Exception as e:
+    #                 print(f"Error loading raw layout: {e}")
+    #                 # Continue without the raw layout - not critical
         
-            return level
+    #         return level
     
-        except Exception as e:
-            print(f"Error loading map {map_file}: {e}")
-            return self.create_test_level(map_file.split('.')[0])  # Fallback to test level
+    #     except Exception as e:
+    #         print(f"Error loading map {map_file}: {e}")
+    #         return self.create_test_level(map_file.split('.')[0])  # Fallback to test level
 
     def load_locations(self):
         """Load location data from JSON file"""
@@ -868,7 +849,7 @@ class AsteroidFrontier:
         return locations
     
     def load_location(self, location_id):
-        """Load a specific location's map and NPCs, 3/8/25"""
+        """Load a specific location's map and NPCs, 3/14/25"""
         print(f"Loading location: {location_id}")
     
         try:
@@ -876,48 +857,27 @@ class AsteroidFrontier:
             if location_id == "ship_cabin":
                 # Load the ship cabin map file
                 map_file = "mvp_ship_cabin.csv"
-                self.current_level = self.load_map_from_file(map_file)
-                if not self.current_level:
-                    print("Failed to load ship cabin, creating fallback level")
-                    self.create_default_level()
-                    self.current_level["name"] = "ship_cabin"  # Override name
-                else:
-                    self.current_level["name"] = "ship_cabin"
+                level = Level(location_id, map_file, SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE)
+                self.current_level = level.get_data()
+            else:
+                # Check if location exists in our data
+                location_data = None
+                for loc in self.locations_data:
+                    if loc.get('id') == location_id:
+                        location_data = loc
+                        break
             
-                # Set up player position
-                if hasattr(self, 'player') and self.current_level and "player_start" in self.current_level:
-                    self.player.rect.x = self.current_level["player_start"][0]
-                    self.player.rect.y = self.current_level["player_start"][1]
-                    print(f"Placing player at start position: ({self.player.rect.x}, {self.player.rect.y})")
+                # Get map file name
+                map_file = f"{location_id}.csv" # Use .csv extension
+                if location_data and 'map_file' in location_data:
+                    map_file = location_data['map_file']
             
-                # No NPCs in ship cabin yet
-                self.npcs = pygame.sprite.Group()
-            
-                return True
-
-            # Check if location exists in our data
-            location_data = None
-            for loc in self.locations_data:
-                if loc.get('id') == location_id:
-                    location_data = loc
-                    break
-        
-            # Get map file name
-            map_file = f"{location_id}.csv" # Use .csv extension
-            if location_data and 'map_file' in location_data:
-                map_file = location_data['map_file']
-        
-            # Load map from file
-            self.current_level = self.load_map_from_file(map_file)
-        
-            # If loading failed, create default level
-            if not self.current_level:
-                print(f"Failed to load map for {location_id}, creating fallback level")
-                self.create_default_level()
-                self.current_level["name"] = location_id  # Override name
+                # Load map using Level class
+                level = Level(location_id, map_file, SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE)
+                self.current_level = level.get_data()
         
             # Place player at starting position
-            if hasattr(self, 'player') and self.current_level and "player_start" in self.current_level:
+            if hasattr(self, 'player') and "player_start" in self.current_level:
                 # First, ensure we have a valid start position
                 if self.current_level["player_start"][0] > 0 and self.current_level["player_start"][1] > 0:
                     self.player.rect.x = self.current_level["player_start"][0]
@@ -929,102 +889,56 @@ class AsteroidFrontier:
                     self.player.rect.y = self.current_level["height"] // 2
                     print(f"Using fallback player position: ({self.player.rect.x}, {self.player.rect.y})")
 
-            # Try loading NPCs from JSON first
+            # Load NPCs from JSON
             self.npcs = self.load_npcs_from_json(location_id)
         
-            # If no NPCs were loaded from JSON, fall back to map positions
-            if len(self.npcs) == 0:
-                print("No NPCs found in JSON, using map positions")
-                # Create default NPCs based on map positions
-                if self.current_level and "npc_positions" in self.current_level:
-                    from character_system import NPC as NPCCharacter
-                
-                    # Dictionary of default NPCs for each location
-                    default_npcs = {
-                        "psyche_township": {
-                            1: {"name": "Stella Vega", "dialogue": ["Welcome to Psyche Township!", "I'm Governor Stella Vega."]},
-                            2: {"name": "Robot #27", "dialogue": ["Unit designation 27 acknowledges your presence.", "Security protocols are active."]},
-                            3: {"name": "Gus", "dialogue": ["As mayor, I'm trying to keep the peace here.", "The Earth garrison is causing trouble."]},
-                            4: {"name": "Township Merchant", "dialogue": ["Looking to trade?", "I've got supplies from all over the Belt."]},
-                            5: {"name": "Mining Coordinator", "dialogue": ["The ore yields have been good this month.", "We need more workers though."]},
-                            6: {"name": "Bartender", "dialogue": ["What'll it be?", "Martian whiskey is on special today."]},
-                            7: {"name": "Leo", "dialogue": ["Great to see you!", "My robotics business is doing well here."]}
-                        },
-                        # Add default NPCs for other locations as needed
-                    }
-                
-                    # Create NPCs based on the map positions and default data
-                    if location_id in default_npcs:
-                        for npc_id, position in self.current_level["npc_positions"].items():
-                            if npc_id in default_npcs[location_id]:
-                                npc_data = default_npcs[location_id][npc_id]
-                                npc = NPCCharacter(npc_data["name"], 
-                                                x=position[0], 
-                                                y=position[1], 
-                                                dialogue=npc_data["dialogue"])
-                            
-                                # Add quest if it's Gus in Psyche Township
-                                if location_id == "psyche_township" and npc_id == 3:
-                                    from dialogue_quest_system import Quest
-                                    quest = Quest("q001", "Supply Run", 
-                                                "Collect supplies for the township.", 
-                                                ["Collect 5 supply crates"])
-                                    quest.credit_reward = 100
-                                    quest.xp_reward = 50
-                                    npc.quest = quest
-                            
-                                self.npcs.add(npc)
-                                print(f"Created NPC: {npc_data['name']} at position ({position[0]}, {position[1]})")
-            else:
-                print(f"Using {len(self.npcs)} NPCs loaded from JSON")
-
-            # Initialize items group
-            self.items = pygame.sprite.Group()
+            # Update camera with map size
+            self.camera.set_map_size(self.current_level["width"], self.current_level["height"])
         
             return True
         
         except Exception as e:
             print(f"ERROR in load_location: {e}")
             # Create emergency fallback level
-            self.create_default_level()
-            self.current_level["name"] = location_id  # Override name
+            level = Level(location_id, None, SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE)
+            self.current_level = level.get_data()
             self.npcs = pygame.sprite.Group()  # Empty NPCs
             return False  # Still return False to indicate failure
     
-    def create_test_level(self, location_id):
-        """Create a test level with walls and floor - would be replaced with actual level loading"""
-        level = {}
-        level["name"] = location_id
-        level["walls"] = pygame.sprite.Group()
-        level["floor"] = pygame.sprite.Group()
-        level["objects"] = pygame.sprite.Group()
-        level["all_sprites"] = pygame.sprite.Group()
+    # def create_test_level(self, location_id):
+    #     """Create a test level with walls and floor - would be replaced with actual level loading"""
+    #     level = {}
+    #     level["name"] = location_id
+    #     level["walls"] = pygame.sprite.Group()
+    #     level["floor"] = pygame.sprite.Group()
+    #     level["objects"] = pygame.sprite.Group()
+    #     level["all_sprites"] = pygame.sprite.Group()
         
-        # Create a simple room with walls around the edges
-        for x in range(25):
-            for y in range(20):
-                if x == 0 or x == 24 or y == 0 or y == 19:
-                    # Create a wall
-                    wall = pygame.sprite.Sprite()
-                    wall.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                    wall.image.fill((100, 100, 100))
-                    wall.rect = wall.image.get_rect()
-                    wall.rect.x = x * TILE_SIZE
-                    wall.rect.y = y * TILE_SIZE
-                    level["walls"].add(wall)
-                    level["all_sprites"].add(wall)
-                else:
-                    # Create a floor tile
-                    floor = pygame.sprite.Sprite()
-                    floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-                    floor.image.fill((50, 50, 50))
-                    floor.rect = floor.image.get_rect()
-                    floor.rect.x = x * TILE_SIZE
-                    floor.rect.y = y * TILE_SIZE
-                    level["floor"].add(floor)
-                    level["all_sprites"].add(floor)
+    #     # Create a simple room with walls around the edges
+    #     for x in range(25):
+    #         for y in range(20):
+    #             if x == 0 or x == 24 or y == 0 or y == 19:
+    #                 # Create a wall
+    #                 wall = pygame.sprite.Sprite()
+    #                 wall.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                 wall.image.fill((100, 100, 100))
+    #                 wall.rect = wall.image.get_rect()
+    #                 wall.rect.x = x * TILE_SIZE
+    #                 wall.rect.y = y * TILE_SIZE
+    #                 level["walls"].add(wall)
+    #                 level["all_sprites"].add(wall)
+    #             else:
+    #                 # Create a floor tile
+    #                 floor = pygame.sprite.Sprite()
+    #                 floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
+    #                 floor.image.fill((50, 50, 50))
+    #                 floor.rect = floor.image.get_rect()
+    #                 floor.rect.x = x * TILE_SIZE
+    #                 floor.rect.y = y * TILE_SIZE
+    #                 level["floor"].add(floor)
+    #                 level["all_sprites"].add(floor)
         
-        return level
+    #     return level
     
     def check_exit_collision(self):
         """Check if player is colliding with an exit tile, 3/8/25"""
@@ -1265,8 +1179,24 @@ class AsteroidFrontier:
         elif self.game_state == GameState.SPACE_TRAVEL:
             # Update space travel
             keys = pygame.key.get_pressed()
-            self.space_travel.update(keys, dt)
-            self.update_space_travel(dt)
+            
+             # Handle weapon firing with spacebar
+            if keys[pygame.K_SPACE]:
+                # Check if space travel system exists
+                if hasattr(self, 'space_travel') and hasattr(self.space_travel, 'fire_weapon'):
+                    # Get ship position and angle
+                    ship_x = self.space_travel.ship_pos[0]
+                    ship_y = self.space_travel.ship_pos[1]
+                    ship_angle = self.space_travel.ship_angle
+                
+                    # Fire weapon
+                    self.space_travel.fire_weapon(ship_x, ship_y, ship_angle)
+            
+            # Pass the player's inventory to space travel
+            if hasattr(self.player, 'inventory'):
+                self.space_travel.update(keys, dt, self.player.inventory)
+            else:
+                self.space_travel.update(keys, dt)
         
             # Check if player is trying to dock
             if keys[pygame.K_e] and self.space_travel.near_location:
@@ -1647,30 +1577,140 @@ class AsteroidFrontier:
         screen.blit(controls, (SCREEN_WIDTH//2 - controls.get_width()//2, SCREEN_HEIGHT - 30))
     
     def draw_inventory(self):
-        """Draw the player's inventory"""
+        """Draw the player's inventory with separate player and ship cargo sections"""
         # Create an inventory panel
         panel_rect = pygame.Rect(50, 50, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100)
-        pygame.draw.rect(screen, (0, 0, 0, 200), panel_rect)
+        pygame.draw.rect(screen, (0, 0, 0), panel_rect)
         pygame.draw.rect(screen, WHITE, panel_rect, 2)
-        
+    
         font = pygame.font.Font(None, 32)
         title = font.render("Inventory", True, WHITE)
         screen.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 10))
-        
-        # In a real game, you'd list the player's inventory items here
+    
         item_font = pygame.font.Font(None, 24)
+        section_font = pygame.font.Font(None, 28)
+    
+        # Calculate the dividing line position
+        divider_y = panel_rect.y + panel_rect.height // 2
+        pygame.draw.line(screen, WHITE, (panel_rect.x + 20, divider_y), 
+                    (panel_rect.right - 20, divider_y), 2)
+    
+        # === PLAYER INVENTORY SECTION ===
+        player_section = section_font.render("Personal Items", True, (200, 200, 255))
+        screen.blit(player_section, (panel_rect.x + 20, panel_rect.y + 50))
+    
+        # Show credits
+        if hasattr(self.player, 'credits'):
+            credits_text = item_font.render(f"Credits: {self.player.credits}", True, (255, 255, 0))
+            screen.blit(credits_text, (panel_rect.right - credits_text.get_width() - 20, panel_rect.y + 50))
+    
+        # Check if player has inventory attribute
+        if hasattr(self.player, 'inventory') and hasattr(self.player.inventory, 'items'):
+        # Show actual inventory
+            player_items = [item for item in self.player.inventory.items 
+                          if not hasattr(item, 'type') or item.type != 'resource']
         
-        # Example items
-        items = [
-            {"name": "Medkit", "quantity": 2},
-            {"name": "Space Pistol", "quantity": 1},
-            {"name": "Energy Pack", "quantity": 3}
-        ]
+            if len(player_items) > 0:
+                y_offset = panel_rect.y + 80
+            
+                for i, item in enumerate(player_items):
+                    # Skip if too many items to display
+                    if i >= 8:  # Limit items per section
+                        more_text = item_font.render(f"... and {len(player_items) - 8} more items", True, WHITE)
+                        screen.blit(more_text, (panel_rect.x + 20, y_offset))
+                        break
+                
+                    # Get item quantity
+                    quantity = getattr(item, 'quantity', 1)
+                
+                    # Display item with quantity if applicable
+                    if quantity > 1:
+                        item_text = item_font.render(f"{item.name} x{quantity}", True, WHITE)
+                    else:
+                        item_text = item_font.render(f"{item.name}", True, WHITE)
+                
+                    screen.blit(item_text, (panel_rect.x + 20, y_offset))
+                
+                    # Add value if item has value
+                    if hasattr(item, 'value') and item.value > 0:
+                        value_text = item_font.render(f"{item.value} credits", True, (200, 200, 100))
+                        screen.blit(value_text, (panel_rect.x + 300, y_offset))
+                
+                    y_offset += 25
+            else:
+                # No items
+                no_items_text = item_font.render("No personal items", True, WHITE)
+                screen.blit(no_items_text, (panel_rect.x + 20, panel_rect.y + 80))
+    
+        # === SHIP CARGO SECTION ===
+        cargo_section = section_font.render("Ship Cargo", True, (200, 255, 200))
+        screen.blit(cargo_section, (panel_rect.x + 20, divider_y + 20))
+    
+         # Collect ship resources
+        ship_resources = {}
         
-        for i, item in enumerate(items):
-            item_text = item_font.render(f"{item['name']} x{item['quantity']}", True, WHITE)
-            screen.blit(item_text, (panel_rect.x + 20, panel_rect.y + 50 + i * 30))
+        # Get ship's cargo capacity
+        cargo_capacity = 0
+        if hasattr(self, 'space_travel') and hasattr(self.space_travel, 'ship'):
+            cargo_capacity = getattr(self.space_travel.ship, 'cargo_capacity', 0)
         
+        # Calculate current cargo usage
+        current_cargo = 0
+        if ship_resources:
+            current_cargo = sum(ship_resources.values())
+
+        # Show cargo capacity with usage
+        capacity_text = item_font.render(f"Cargo: {current_cargo}/{cargo_capacity}", True, 
+                                       (200, 200, 200) if current_cargo < cargo_capacity else (255, 100, 100))
+        screen.blit(capacity_text, (panel_rect.right - capacity_text.get_width() - 20, divider_y + 20))
+    
+        # Get from asteroid_field if it exists
+        if hasattr(self, 'space_travel') and hasattr(self.space_travel, 'asteroid_field'):
+            ship_resources = self.space_travel.asteroid_field.get_collected_resources()
+    
+        # Also check player inventory for resource-type items
+        if hasattr(self.player, 'inventory') and hasattr(self.player.inventory, 'items'):
+            resource_items = [item for item in self.player.inventory.items 
+                             if hasattr(item, 'type') and item.type == 'resource']
+        
+            for item in resource_items:
+                resource_name = item.id
+                if resource_name in ship_resources:
+                    ship_resources[resource_name] += item.quantity
+                else:
+                    ship_resources[resource_name] = item.quantity
+    
+        # Display ship resources
+        if ship_resources:
+            y_offset = divider_y + 50
+        
+            for i, (resource_name, amount) in enumerate(ship_resources.items()):
+                # Skip if too many items to display
+                if i >= 8:  # Limit items per section
+                    more_text = item_font.render(f"... and {len(ship_resources) - 8} more resources", True, WHITE)
+                    screen.blit(more_text, (panel_rect.x + 20, y_offset))
+                    break
+            
+                # Format resource name for display
+                display_name = resource_name.replace('_', ' ').title()
+            
+                resource_text = item_font.render(f"{display_name}: {amount}", True, WHITE)
+                screen.blit(resource_text, (panel_rect.x + 20, y_offset))
+            
+                # Add estimated value based on merchant system if available
+                if hasattr(self, 'merchant_system'):
+                    base_value = self.merchant_system.get_resource_price(resource_name, 
+                                                                  self.current_level.get("name", "psyche_township"))
+                    total_value = base_value * amount
+                    value_text = item_font.render(f"{total_value} credits", True, (200, 200, 100))
+                    screen.blit(value_text, (panel_rect.x + 300, y_offset))
+            
+                y_offset += 25
+        else:
+            no_cargo_text = item_font.render("Cargo hold empty", True, WHITE)
+            screen.blit(no_cargo_text, (panel_rect.x + 20, divider_y + 50))
+    
+        # Draw navigation instructions
         close_text = item_font.render("Press I to close", True, WHITE)
         screen.blit(close_text, (panel_rect.centerx - close_text.get_width()//2, panel_rect.bottom - 30))
     
@@ -1913,7 +1953,19 @@ class AsteroidFrontier:
                         random.randint(-3000, 3000),  # Random y position
                         (200, 200, 200)  # Default color
                     )
+            
+             # Initialize asteroid field if not already done
+            if hasattr(self.space_travel, 'asteroid_field'):
+                print("Using existing asteroid field")
+            else:
+                print("Integrating asteroid field")
+                self.space_travel.asteroid_field = AsteroidField(10000, 8000)
         
+            # Preserve collected resources between space sessions
+            if hasattr(self, 'collected_resources'):
+                print("Restoring previously collected resources")
+                self.space_travel.asteroid_field.collected_resources = self.collected_resources
+
             # Set game state
             self.game_state = GameState.SPACE_TRAVEL
             print("Space travel mode activated successfully")
@@ -2577,58 +2629,58 @@ class AsteroidFrontier:
                 
     #debug stuff below#
 
-    def test_game_states(self):
-        """Test function to verify game state transitions work correctly 3/4/25"""
-        print("\n--- RUNNING GAME STATE TEST ---")
+    # def test_game_states(self):
+    #     """Test function to verify game state transitions work correctly 3/4/25"""
+    #     print("\n--- RUNNING GAME STATE TEST ---")
     
-        # Get the current state
-        old_state = self.game_state
-        print(f"Current game state: {self.game_state}")
+    #     # Get the current state
+    #     old_state = self.game_state
+    #     print(f"Current game state: {self.game_state}")
     
-        # Try changing to each state and rendering a test screen
-        for state in [GameState.MAIN_MENU, GameState.OVERWORLD, GameState.DIALOGUE, 
-                  GameState.INVENTORY, GameState.TRAVEL_MENU, GameState.SPACE_TRAVEL]:
+    #     # Try changing to each state and rendering a test screen
+    #     for state in [GameState.MAIN_MENU, GameState.OVERWORLD, GameState.DIALOGUE, 
+    #               GameState.INVENTORY, GameState.TRAVEL_MENU, GameState.SPACE_TRAVEL]:
         
-            # Skip current state
-            if state == old_state:
-                continue
+    #         # Skip current state
+    #         if state == old_state:
+    #             continue
             
-            print(f"Testing transition to state: {state}")
+    #         print(f"Testing transition to state: {state}")
         
-            # Set the state
-            self.game_state = state
+    #         # Set the state
+    #         self.game_state = state
         
-            # Draw a test screen for this state
-            self._draw_test_screen(f"TEST: {state}")
+    #         # Draw a test screen for this state
+    #         self._draw_test_screen(f"TEST: {state}")
         
-            # Give a moment to see it
-            pygame.time.delay(1000)
+    #         # Give a moment to see it
+    #         pygame.time.delay(1000)
     
-        # Restore original state
-        print(f"Restoring original state: {old_state}")
-        self.game_state = old_state
+    #     # Restore original state
+    #     print(f"Restoring original state: {old_state}")
+    #     self.game_state = old_state
     
-        print("--- GAME STATE TEST COMPLETE ---\n")
+    #     print("--- GAME STATE TEST COMPLETE ---\n")
 
-    def _draw_test_screen(self, message):
-        """Draw a simple test screen with message 3/4/25"""
-        # Get the screen surface
-        screen = pygame.display.get_surface()
+    # def _draw_test_screen(self, message):
+    #     """Draw a simple test screen with message 3/4/25"""
+    #     # Get the screen surface
+    #     screen = pygame.display.get_surface()
     
-        # Fill with a color based on hash of the message (for variety)
-        color_seed = sum(ord(c) for c in message)
-        color = ((color_seed * 123) % 255, (color_seed * 45) % 255, (color_seed * 67) % 255)
-        screen.fill(color)
+    #     # Fill with a color based on hash of the message (for variety)
+    #     color_seed = sum(ord(c) for c in message)
+    #     color = ((color_seed * 123) % 255, (color_seed * 45) % 255, (color_seed * 67) % 255)
+    #     screen.fill(color)
     
-        # Draw the message
-        font = pygame.font.Font(None, 48)
-        text = font.render(message, True, (255, 255, 255))
-        screen.blit(text, (screen.get_width() // 2 - text.get_width() // 2, 
-                           screen.get_height() // 2 - text.get_height() // 2))
+    #     # Draw the message
+    #     font = pygame.font.Font(None, 48)
+    #     text = font.render(message, True, (255, 255, 255))
+    #     screen.blit(text, (screen.get_width() // 2 - text.get_width() // 2, 
+    #                        screen.get_height() // 2 - text.get_height() // 2))
     
-        # Update the display
-        pygame.display.flip()
-        print(f"Drew test screen for: {message}")
+    #     # Update the display
+    #     pygame.display.flip()
+    #     print(f"Drew test screen for: {message}")
 
     def check_merchant_interaction(self):
         """Check if player is interacting with a merchant NPC, 3/11/25"""

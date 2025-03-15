@@ -501,11 +501,21 @@ class AsteroidField:
         
         return None
     
-    def collect_resources(self, player_x, player_y, collection_radius=50):
+    def collect_resources(self, player_x, player_y, collection_radius=50, player_inventory=None, cargo_capacity=100):
         """Collect resource particles near the player"""
         collected = []
-        
-         # Debug
+
+        # Get current cargo usage
+        current_cargo_usage = sum(self.collected_resources.values())
+    
+        # Calculate available space
+        available_space = max(0, cargo_capacity - current_cargo_usage)
+    
+        if available_space <= 0:
+            # Cargo full - can't collect any more
+            return []
+
+        # Debug
         particle_count_before = len(self.resource_particles)
 
         for particle in self.resource_particles[:]:  # Use a copy for safe modification
@@ -525,27 +535,40 @@ class AsteroidField:
                 
                 # Check if particle reaches player
                 if distance < 15: # Smaller distance for actual collection
-                    # Mark as collected
-                    particle.collected = True
+                    # Check if we have space for this resource
+                    if particle.amount <= available_space:
+                        # Mark as collected
+                        particle.collected = True
                     
-                    # Add to collected resources
-                    if particle.resource_name in self.collected_resources:
-                        self.collected_resources[particle.resource_name] += particle.amount
-                    else:
-                        self.collected_resources[particle.resource_name] = particle.amount
-                    
-                    collected.append((particle.resource_name, particle.amount))
-                    
-                    print(f"Resource collected: {particle.resource_name} x{particle.amount}")
-                
-                    # Remove the particle
-                    self.resource_particles.remove(particle)
-        
-        # Debug
-        particle_count_after = len(self.resource_particles)
-        if particle_count_before != particle_count_after:
-            print(f"Resource particles: {particle_count_before} -> {particle_count_after}")
+                        # Add to collected resources
+                        if particle.resource_name in self.collected_resources:
+                            self.collected_resources[particle.resource_name] += particle.amount
+                        else:
+                            self.collected_resources[particle.resource_name] = particle.amount
+                        
+                        # Update available space
+                        available_space -= particle.amount
 
+                        # Add to player inventory if provided
+                        if player_inventory is not None:
+                        # This would depend on your inventory implementation
+                        # Code to add to inventory would go here
+                            pass
+
+                        collected.append((particle.resource_name, particle.amount))
+                        print(f"Resource collected: {particle.resource_name} x{particle.amount}")
+                
+                        # Remove the particle
+                        self.resource_particles.remove(particle)
+                    else:
+                        # Not enough space - don't collect
+                        print(f"Cargo full - can't collect {particle.amount} units of {particle.resource_name}")
+                    
+                        # Optional: Display a message to the player
+                        self.cargo_full_message = True
+                    
+                        # Don't try to collect any more resources
+                        break
         return collected
     
     def draw(self, screen, camera_offset):

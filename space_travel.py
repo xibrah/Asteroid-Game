@@ -73,7 +73,7 @@ class SpaceTravel:
             'radius': 20  # Size of location marker
         }
     
-    def update(self, keys, dt):
+    def update(self, keys, dt, player_inventory=None):
         """Update ship position and check for nearby locations"""
         # Handle rotation
         if keys[pygame.K_LEFT]:
@@ -117,11 +117,20 @@ class SpaceTravel:
             self.asteroid_field.update(dt, self.ship_pos[0], self.ship_pos[1], 
                                       self.screen_width, self.screen_height)
             
+            # Get cargo capacity from ship
+            cargo_capacity = getattr(self.ship, 'cargo_capacity', 100)
+
             # Collect resources that are near the ship
             collected = self.asteroid_field.collect_resources(
-                self.ship_pos[0], self.ship_pos[1], 80
+                self.ship_pos[0], self.ship_pos[1], 80, player_inventory, cargo_capacity
             )
     
+            # Display cargo full warning if needed
+            if hasattr(self.asteroid_field, 'cargo_full_message') and self.asteroid_field.cargo_full_message:
+                print("Cargo hold full! Cannot collect more resources.")
+                # Reset the message flag so it doesn't spam
+                self.asteroid_field.cargo_full_message = False
+            
             # Debug - show what was collected
             if collected:
                 for resource_name, amount in collected:
@@ -343,3 +352,25 @@ class SpaceTravel:
                     resource_text = font.render(f"{resource_name}: {amount}", True, (100, 255, 100))
                     screen.blit(resource_text, (20, resource_y))
                     resource_y += 25
+         # Draw cargo usage if we have an asteroid field
+        if hasattr(self, 'asteroid_field'):
+            # Calculate current usage
+            cargo_usage = sum(self.asteroid_field.collected_resources.values())
+            cargo_capacity = getattr(self.ship, 'cargo_capacity', 100)
+        
+            # Determine color based on fullness
+            if cargo_usage >= cargo_capacity:
+                cargo_color = (255, 0, 0)  # Red when full
+            elif cargo_usage >= cargo_capacity * 0.8:
+                cargo_color = (255, 255, 0)  # Yellow when getting full
+            else:
+                cargo_color = (0, 255, 0)  # Green when plenty of space
+        
+            # Draw cargo text
+            cargo_text = font.render(f"Cargo: {cargo_usage}/{cargo_capacity}", True, cargo_color)
+            screen.blit(cargo_text, (20, 140))
+        
+            # If cargo is full, show warning
+            if cargo_usage >= cargo_capacity:
+                warning_text = font.render("CARGO HOLD FULL!", True, (255, 0, 0))
+                screen.blit(warning_text, (self.screen_width // 2 - warning_text.get_width() // 2, 200))

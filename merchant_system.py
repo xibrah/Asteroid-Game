@@ -320,28 +320,35 @@ class MerchantSystem:
     
     def sell_resource(self, game, resource_id, amount=1, location_id="psyche_township"):
         """Sell a resource to the merchant"""
-        # Check if player has the resource
-        collected_resources = self.get_player_resources(game)
+        # Check if we have space travel with asteroid field
+        if hasattr(game, 'space_travel') and hasattr(game.space_travel, 'asteroid_field'):
+            resources = game.space_travel.asteroid_field.collected_resources
         
-        if resource_id not in collected_resources or collected_resources[resource_id] < amount:
-            return False
-        
-        # Calculate sale value
-        price_per_unit = self.get_resource_price(resource_id, location_id)
-        total_price = price_per_unit * amount
-        
-        # Add credits to player
-        game.player.credits += total_price
-        
-        # Remove resource from player
-        collected_resources[resource_id] -= amount
-        if collected_resources[resource_id] <= 0:
-            del collected_resources[resource_id]
-        
-        # Update player resources
-        self.set_player_resources(game, collected_resources)
-        
-        return total_price
+            if resource_id in resources and resources[resource_id] >= amount:
+                # Calculate sale value
+                price_per_unit = self.get_resource_price(resource_id, location_id)
+                total_price = price_per_unit * amount
+            
+                # Add credits to player
+                game.player.credits += total_price
+            
+                # Remove resource
+                resources[resource_id] -= amount
+                if resources[resource_id] <= 0:
+                    del resources[resource_id]
+            
+                # Force refresh of display items
+                self.refresh_items_list(game)
+            
+                return total_price
+    
+        return False
+
+    def refresh_items_list(self, game):
+        """Refresh the list of items after changes"""
+        # Force recalculation of visible items on next draw
+        if hasattr(self, '_cached_items'):
+            del self._cached_items
     
     def get_player_resources(self, game):
         """Get player's collected resources"""
@@ -381,15 +388,15 @@ class MerchantSystem:
                 self.selected_index = 0
                 self.scroll_offset = 0
             
-            # Tab switching with number keys
-            if event.key == pygame.K_1:
-                self.selected_tab = "upgrades"
-                self.selected_index = 0
-                self.scroll_offset = 0
-            elif event.key == pygame.K_2:
-                self.selected_tab = "resources"
-                self.selected_index = 0
-                self.scroll_offset = 0
+            # # Tab switching with number keys
+            # if event.key == pygame.K_1:
+            #     self.selected_tab = "upgrades"
+            #     self.selected_index = 0
+            #     self.scroll_offset = 0
+            # elif event.key == pygame.K_2:
+            #     self.selected_tab = "resources"
+            #     self.selected_index = 0
+            #     self.scroll_offset = 0
             
             # Navigation
             if event.key == pygame.K_UP:
@@ -404,9 +411,10 @@ class MerchantSystem:
                 if self.selected_index >= self.scroll_offset + self.max_visible_items:
                     self.scroll_offset = self.selected_index - self.max_visible_items + 1
             
-            # Perform action
+            # Perform action - handle Enter/Return and Space keys
             if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
-                self.perform_selected_action(game)
+                print("Enter/Space pressed, performing selected action")
+                return self.perform_selected_action(game)
             
             # Selling with specific quantity
             if self.selected_tab == "resources" and pygame.K_1 <= event.key <= pygame.K_9:
@@ -442,39 +450,52 @@ class MerchantSystem:
     
     def perform_selected_action(self, game):
         """Perform action for selected item"""
+        print("Performing action for selected item")
         visible_items = self.get_visible_items(game)
-        
+    
         if 0 <= self.selected_index < len(visible_items):
             selected_item = visible_items[self.selected_index]
-            
+        
             if self.selected_tab == "upgrades":
                 # Purchase upgrade
                 if not selected_item["max_level"] and selected_item["can_afford"]:
                     success = self.purchase_upgrade(game, selected_item["upgrade"].id)
                     if success:
                         print(f"Purchased {selected_item['upgrade'].name} upgrade!")
-            
+                        return True
+        
             elif self.selected_tab == "resources":
                 # Sell all of the selected resource
-                self.sell_selected_resource(game)
+                success = self.sell_selected_resource(game)
+                return success
+    
+        return False
     
     def sell_selected_resource(self, game, quantity=None):
         """Sell selected resource"""
+        print("Attempting to sell selected resource")
         visible_items = self.get_visible_items(game)
-        
+    
         if 0 <= self.selected_index < len(visible_items):
             selected_item = visible_items[self.selected_index]
-            
+        
+            # Get resource ID and amount
+            resource_id = selected_item["id"]
+            available = selected_item["amount"]
+        
             # Determine quantity to sell
-            if quantity is None or quantity > selected_item["amount"]:
-                quantity = selected_item["amount"]
-            
+            if quantity is None or quantity > available:
+                quantity = available
+        
             # Sell the resource
             location_id = game.current_level.get("name", "psyche_township")
-            credits_earned = self.sell_resource(game, selected_item["id"], quantity, location_id)
-            
+            credits_earned = self.sell_resource(game, resource_id, quantity, location_id)
+        
             if credits_earned:
                 print(f"Sold {quantity} {selected_item['name']} for {credits_earned} credits!")
+                return True
+    
+        return False
     
     def draw(self, screen, game):
         """Draw the merchant interface"""

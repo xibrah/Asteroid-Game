@@ -38,6 +38,14 @@ class SaveSystem:
                 # Add other player attributes here
             },
             
+            # Inventory data
+            "inventory": {
+                "items": []
+            },
+        
+            # Resources data
+            "resources": {},
+            
             # Current location
             "current_location": {
                 "id": self.game.current_level.get("name", "psyche_township") if self.game.current_level else "psyche_township",
@@ -55,12 +63,6 @@ class SaveSystem:
                 # Add other ship attributes
             },
             
-            # Inventory (simplified for now)
-            "inventory": {
-                "credits": getattr(self.game.player, 'credits', 0),
-                "items": [] # We'll expand this
-            },
-            
             # Game state flags 
             "game_flags": {
                 # You can add any flags or variables that track game progress
@@ -71,15 +73,26 @@ class SaveSystem:
             # Visited locations
             "visited_locations": getattr(self.game, 'visited_locations', []),
             
-            # Space resources collected (for future)
-            "resources": {
-                "metal": 0,
-                "crystal": 0,
-                "fuel": 0,
-                # Add other resources
-            }
         }
-        
+    
+        # Save player inventory if it exists
+        if hasattr(self.game.player, 'inventory') and hasattr(self.game.player.inventory, 'items'):
+            # Convert inventory items to serializable format
+            for item in self.game.player.inventory.items:
+                item_data = {
+                    "id": item.id,
+                    "name": item.name,
+                    "type": getattr(item, 'type', 'item'),
+                    "quantity": getattr(item, 'quantity', 1),
+                    "value": getattr(item, 'value', 0)
+                }
+                save_data["inventory"]["items"].append(item_data)
+    
+        # Save collected resources if they exist
+        if hasattr(self.game, 'space_travel') and hasattr(self.game.space_travel, 'asteroid_field'):
+            resources = self.game.space_travel.asteroid_field.get_collected_resources()
+            save_data["resources"] = resources
+    
         return save_data
 
     def save_game(self, save_name=None):
@@ -142,20 +155,58 @@ class SaveSystem:
             if hasattr(self.game.player, 'max_health'):
                 self.game.player.max_health = save_data["player"].get("max_health", 100)
             
-            # Money
-            if hasattr(self.game.player, 'credits'):
-                self.game.player.credits = save_data["player"].get("credits", 0)
+            # Credits
+            self.game.player.credits = save_data["player"].get("credits", 0)
         
-        # Restore current location
-        if "current_location" in save_data:
-            location_id = save_data["current_location"]["id"]
+        # Restore inventory if player has inventory system
+        if "inventory" in save_data and hasattr(self.game.player, 'inventory'):
+            # Clear current inventory
+            if hasattr(self.game.player.inventory, 'items'):
+                self.game.player.inventory.items = []
             
-            # Set docked location if applicable
-            if "docked_location" in save_data["current_location"] and save_data["current_location"]["docked_location"]:
-                self.game.docked_location = save_data["current_location"]["docked_location"]
+            # Add saved items
+            from item_inventory import Item
+            for item_data in save_data["inventory"].get("items", []):
+                item = Item(
+                    item_data.get("id", "unknown"),
+                    item_data.get("name", "Unknown Item"),
+                    "A saved item",
+                    item_data.get("value", 0)
+                )
             
-            # Load the location
-            self.game.load_location(location_id)
+                # Set type if specified
+                if "type" in item_data:
+                    item.type = item_data["type"]
+                
+                # Set quantity if specified
+                if "quantity" in item_data:
+                    item.quantity = item_data["quantity"]
+                    item.stackable = True
+            
+                # Add to inventory
+                self.game.player.inventory.add_item(item)
+    
+        # Restore resources
+        if "resources" in save_data:
+            # Ensure space travel system exists
+            if not hasattr(self.game, 'space_travel'):
+                self.game.enter_space()  # Initialize if needed
+                self.game.game_state = GameState.OVERWORLD  # But return to overworld state
+        
+            # Apply saved resources to asteroid field
+            if hasattr(self.game, 'space_travel') and hasattr(self.game.space_travel, 'asteroid_field'):
+                self.game.space_travel.asteroid_field.collected_resources = save_data["resources"]
+            
+            # Restore current location
+            if "current_location" in save_data:
+                location_id = save_data["current_location"]["id"]
+            
+                # Set docked location if applicable
+                if "docked_location" in save_data["current_location"] and save_data["current_location"]["docked_location"]:
+                    self.game.docked_location = save_data["current_location"]["docked_location"]
+            
+                # Load the location
+                self.game.load_location(location_id)
         
         # Restore ship data if space travel exists
         if "ship" in save_data and hasattr(self.game, 'space_travel') and hasattr(self.game.space_travel, 'ship'):

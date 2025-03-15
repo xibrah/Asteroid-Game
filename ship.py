@@ -118,7 +118,7 @@ class Ship:
             self.shield_strength = 5 * self.tiles['G']
             
         if 'O' in self.tiles:  # Cargo hold
-            self.cargo_capacity = 10 * self.tiles['O']
+            self.cargo_capacity = 100 * self.tiles['O']
             
         if 'P' in self.tiles:  # Power core boosts everything
             power_bonus = 1.0 + (0.1 * self.tiles['P'])

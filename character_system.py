@@ -249,12 +249,46 @@ class Player(Character, pygame.sprite.Sprite):
         self.speed = 5
         self.last_direction = "down"
         self.quests = []
+        self.credits = 100  # Start with 100 credits as a simple numeric property
+
+        # Create a central inventory system
+        from item_inventory import Inventory
+        self.inventory = Inventory(capacity=30)
+    
+        # Start with some basic items
+        from item_inventory import Weapon, Armor, Consumable, QuestItem, ItemFactory
+        #self.inventory.add_item(ItemFactory.create_item("space_pistol"))
+        #self.inventory.add_item(ItemFactory.create_item("light_armor"))
+        #self.inventory.add_item(ItemFactory.create_item("Medkit"))
+        #self.inventory.add_item(ItemFactory.create_item("ore_sample"))
+
+        # Reputation storage
         self.reputation = {
             "earth": 0,
             "mars": 0,
             "pallas": 0,
             "psyche_township": 0
         }
+
+        # Property for easy access to credits
+        @property
+        def credits(self):
+            for item in self.inventory.items:
+                if item.id == "credits":
+                    return item.quantity
+            return 0
+
+        # Method to add credits
+        def add_credits(self, amount):
+            for item in self.inventory.items:
+                if item.id == "credits":
+                    item.quantity += amount
+                    return True
+        
+            # If no credits item found, create one
+            from item_inventory import Currency
+            self.inventory.add_item(Currency(amount=amount))
+            return True
     
     def update(self, keys, dt, walls=None):
         """Update player position based on input, 3/8/25"""

@@ -143,20 +143,32 @@ class QuestItem(Item):
         return False
 
 
-class Currency(Item):
-    def __init__(self, item_id="credits", name="Credits", description="Standard currency", 
-                 value=1, icon=None, amount=1):
-        super().__init__(item_id, name, description, value, icon)
-        self.type = "currency"
+# class Currency(Item):
+#     def __init__(self, item_id="credits", name="Credits", description="Standard currency", 
+#                  value=1, icon=None, amount=1):
+#         super().__init__(item_id, name, description, value, icon)
+#         self.type = "currency"
+#         self.stackable = True
+#         self.max_stack = 9999999
+#         self.quantity = amount
+    
+#     def use(self, player):
+#         """Add to player's credits"""
+#         player.credits += self.quantity * self.value
+#         return True  # Remove item after adding credits
+
+class ResourceItem(Item):
+    def __init__(self, item_id, name, description, value, quantity=1):
+        super().__init__(item_id, name, description, value)
+        self.type = "resource"
         self.stackable = True
-        self.max_stack = 9999999
-        self.quantity = amount
+        self.max_stack = 999
+        self.quantity = quantity
+        self.weight = quantity  # Each unit takes up 1 capacity
     
     def use(self, player):
-        """Add to player's credits"""
-        player.credits += self.quantity * self.value
-        return True  # Remove item after adding credits
-
+        """Resources typically can't be used directly"""
+        return False
 
 class Inventory:
     def __init__(self, capacity=20):
@@ -344,12 +356,12 @@ class ItemFactory:
                 "value": 50,
                 "quest_id": "q002"
             },
-            "credits": {
-                "class": Currency,
-                "name": "Credits",
-                "description": "Standard currency used throughout the system.",
-                "value": 1
-            }
+            # "credits": {
+            #     "class": Currency,
+            #     "name": "Credits",
+            #     "description": "Standard currency used throughout the system.",
+            #     "value": 1
+            # }
         }
         
         if item_id in items:

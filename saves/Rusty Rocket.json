@@ -1,18 +1,44 @@
 {
   "meta": {
     "version": "0.1",
-    "timestamp": "2025-03-11T18:20:50.455547",
+    "timestamp": "2025-03-15T09:16:54.487230",
     "save_name": "Rusty Rocket"
   },
   "player": {
     "position": {
-      "x": 323,
-      "y": 261
+      "x": 333,
+      "y": 251
     },
     "health": 100,
     "max_health": 100,
-    "credits": 0
+    "credits": 545
   },
+  "inventory": {
+    "items": [
+      {
+        "id": "iron",
+        "name": "Iron",
+        "type": "resource",
+        "quantity": 14,
+        "value": 20
+      },
+      {
+        "id": "gold",
+        "name": "Gold",
+        "type": "resource",
+        "quantity": 3,
+        "value": 20
+      },
+      {
+        "id": "copper",
+        "name": "Copper",
+        "type": "resource",
+        "quantity": 15,
+        "value": 20
+      }
+    ]
+  },
+  "resources": {},
   "current_location": {
     "id": "rusty_rocket",
     "docked_location": null
@@ -24,19 +50,10 @@
     "rotation_speed": 3.3000000000000003,
     "max_speed": 4.95
   },
-  "inventory": {
-    "credits": 0,
-    "items": []
-  },
   "game_flags": {
     "tutorial_completed": false
   },
   "visited_locations": [
     "psyche_township"
-  ],
-  "resources": {
-    "metal": 0,
-    "crystal": 0,
-    "fuel": 0
-  }
+  ]
 }
