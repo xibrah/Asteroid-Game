@@ -80,34 +80,59 @@ class SystemMap:
         return base_cost + destination.travel_cost
     
     def draw(self, screen, offset=(0, 0), scale=1.0):
-        """Draw the system map on the screen"""
+        """Draw the system map on the screen, 3/16/25"""
         # Draw background if available
         if self.background:
-            screen.blit(self.background, offset)
+            scaled_bg = pygame.transform.scale(self.background, 
+                                              (int(self.width * scale), int(self.height * scale)))
+            screen.blit(scaled_bg, offset)
         else:
             # Create a space background
             bg_rect = pygame.Rect(offset[0], offset[1], self.width * scale, self.height * scale)
             pygame.draw.rect(screen, (5, 5, 20), bg_rect)
-        
+    
+        # Draw orbital rings if defined
+        center_x = offset[0] + (self.width/2) * scale
+        center_y = offset[1] + (self.height/2) * scale
+    
+        if hasattr(self, 'orbital_rings'):
+            for radius in self.orbital_rings:
+                # Draw as a dotted circle
+                scaled_radius = radius * scale
+                points = 72  # number of points to approximate the circle
+                for i in range(points):
+                    if i % 3 == 0:  # Skip every third point for dotted effect
+                        continue
+                    angle = 2 * math.pi * i / points
+                    x1 = center_x + scaled_radius * math.cos(angle)
+                    y1 = center_y + scaled_radius * math.sin(angle)
+                
+                    # Draw a small point or line segment
+                    pygame.draw.circle(screen, (50, 50, 80), (int(x1), int(y1)), 1)
+    
+        # Draw the sun at the center
+        pygame.draw.circle(screen, (255, 255, 100), (int(center_x), int(center_y)), int(15 * scale))
+        pygame.draw.circle(screen, (255, 200, 0), (int(center_x), int(center_y)), int(10 * scale))
+    
         # Draw connections between locations
         for loc_id, location in self.locations.items():
             loc_pos = (offset[0] + location.position[0] * scale, 
-                      offset[1] + location.position[1] * scale)
-            
+                     offset[1] + location.position[1] * scale)
+        
             for connected_id in location.connected_locations:
                 if connected_id in self.locations:
                     connected_loc = self.locations[connected_id]
                     connected_pos = (offset[0] + connected_loc.position[0] * scale,
                                    offset[1] + connected_loc.position[1] * scale)
-                    
+                
                     # Draw line between locations
-                    pygame.draw.line(screen, (100, 100, 150), loc_pos, connected_pos, 2)
-        
+                    pygame.draw.line(screen, (40, 40, 70), loc_pos, connected_pos, 1)
+    
         # Draw locations
         for loc_id, location in self.locations.items():
             loc_pos = (offset[0] + location.position[0] * scale, 
-                      offset[1] + location.position[1] * scale)
-            
+                     offset[1] + location.position[1] * scale)
+        
             # Determine location color based on faction
             color = (200, 200, 200)  # Default gray
             if location.faction == "earth":
@@ -115,16 +140,31 @@ class SystemMap:
             elif location.faction == "mars":
                 color = (255, 100, 0)  # Red-orange for Mars
             elif location.faction == "pallas":
-                color = (150, 0, 150)  # Purple for Pallas Syndicate
-            
-            # Draw location circle
+                color = (150, 0, 150)  # Purple for Pallas
+        
+            # Draw location circle - highlight current location
             radius = 8 if loc_id == self.player_location else 5
-            pygame.draw.circle(screen, color, loc_pos, radius)
-            
-            # Draw location name
+            pygame.draw.circle(screen, color, loc_pos, int(radius * scale))
+        
+            # Add a pulsing highlight for the current location
+            if loc_id == self.player_location:
+                pulse = (pygame.time.get_ticks() % 1000) / 1000.0
+                pulse_radius = (8 + 4 * pulse) * scale
+                pygame.draw.circle(screen, color, loc_pos, int(pulse_radius), 1)
+        
+            # Draw location name with shadow for better visibility
             name_text = self.font.render(location.name, True, (255, 255, 255))
+            shadow_text = self.font.render(location.name, True, (0, 0, 0))
+        
+            # Offset based on map section to prevent overlap
+            name_offset_y = 10
+            if location.position[1] > self.height/2:
+                name_offset_y = -25  # Above the circle if in lower half
+            
+            screen.blit(shadow_text, (loc_pos[0] - name_text.get_width() // 2 + 1, 
+                                    loc_pos[1] + name_offset_y + 1))
             screen.blit(name_text, (loc_pos[0] - name_text.get_width() // 2, 
-                                  loc_pos[1] + 10))
+                                  loc_pos[1] + name_offset_y))
 
 
 class SpaceTravel:

@@ -125,6 +125,13 @@ class AsteroidFrontier:
         # UI elements
         self.font = pygame.font.Font(None, 24)
         
+         # Menu system
+        self.active_tab = 0  # 0: Items, 1: Self, 2: Map, 3: Quests
+        self.menu_open = False  # Track if the menu is open
+    
+        # Game state for menu
+        self.game_states = GameState()  # If you're using an enum or constants class
+        
         # Game flags
         self.show_inventory = False
         self.show_map = False
@@ -202,8 +209,6 @@ class AsteroidFrontier:
                     self.visited_locations.append(location_id)
     
         print("All systems initialized")
-        
-    
         
     def load_npcs(self):
         """Load NPC data from JSON file"""
@@ -318,8 +323,6 @@ class AsteroidFrontier:
         npc.has_shop = len(npc_data.get('shop_inventory', [])) > 0
     
         return npc
-
-    
 
     def load_locations(self):
         """Load location data from JSON file"""
@@ -461,57 +464,112 @@ class AsteroidFrontier:
         return npcs
 
     def create_system_map(self):
-        """Create the solar system map with locations"""
-        system_map = SystemMap(1000, 1000)
+        """Create the solar system map with locations in realistic orbital patterns, 3/16/25"""
+        system_map = SystemMap(2000, 2000)
+    
+        # Map center point (Sun position)
+        center_x, center_y = 1000, 1000
+    
+        # Locations with radial orbital positions
+        # Format: id, name, faction, orbital_radius, angle_degrees
+        locations = [
+            # Inner system
+            {"id": "mercury", "name": "Mercury", "faction": "earth", "radius": 150, "angle": 30},
+            {"id": "venus", "name": "Venus", "faction": "earth", "radius": 250, "angle": 135},
+            {"id": "earth", "name": "Earth", "faction": "earth", "radius": 350, "angle": 210},
+            {"id": "luna", "name": "Luna", "faction": "earth", "radius": 380, "angle": 225},
+            {"id": "mars", "name": "Mars", "faction": "mars", "radius": 450, "angle": 315},
         
-        # Add locations
-        psyche = Location("Psyche", "Mining colony and shipyard", "psyche_map.csv", 
-                          position=(500, 300), faction="mars")
-        ceres = Location("Ceres", "Major trading hub", "ceres_map.csv", 
-                         position=(300, 200), faction="earth")
-        pallas = Location("Pallas", "Syndicate stronghold", "pallas_map.csv", 
-                          position=(700, 400), faction="pallas")
-        vesta = Location("Vesta", "Mining outpost", "vesta_map.csv", 
-                         position=(400, 500), faction="earth")
-        luna = Location("Luna", "Earth's moon and gateway to space", "luna_map.csv", 
-                        position=(200, 300), faction="earth")
-        mars = Location("Mars", "Industrialized planet", "mars_map.csv", 
-                       position=(150, 400), faction="mars")
+            # Asteroid Belt (at various angles to show belt distribution)
+            {"id": "ceres", "name": "Ceres", "faction": "earth", "radius": 650, "angle": 45},
+            {"id": "vesta", "name": "Vesta", "faction": "earth", "radius": 600, "angle": 160},
+            {"id": "psyche", "name": "Psyche", "faction": "mars", "radius": 680, "angle": 270},
+            {"id": "pallas", "name": "Pallas", "faction": "pallas", "radius": 710, "angle": 330},
         
-        # Add connections
-        psyche.add_connection("ceres", 200)
-        psyche.add_connection("pallas", 250)
-        psyche.add_connection("vesta", 150)
-        psyche.add_connection("mars", 350)
+            # Outer system
+            {"id": "jupiter", "name": "Jupiter", "faction": "independent", "radius": 850, "angle": 80},
+            {"id": "saturn", "name": "Saturn", "faction": "independent", "radius": 1000, "angle": 200},
         
-        ceres.add_connection("psyche", 200)
-        ceres.add_connection("vesta", 180)
-        ceres.add_connection("luna", 280)
-        
-        pallas.add_connection("psyche", 250)
-        
-        vesta.add_connection("psyche", 150)
-        vesta.add_connection("ceres", 180)
-        
-        luna.add_connection("ceres", 280)
-        luna.add_connection("mars", 300)
-        
-        mars.add_connection("luna", 300)
-        mars.add_connection("psyche", 350)
-        
+            # Special locations
+            {"id": "rusty_rocket", "name": "Rusty Rocket", "faction": "independent", "radius": 640, "angle": 50}
+        ]
+    
+        # Store the locations for space travel use
+        self.map_locations = {}
+    
         # Add locations to map
-        system_map.add_location("psyche", psyche)
-        system_map.add_location("ceres", ceres)
-        system_map.add_location("pallas", pallas)
-        system_map.add_location("vesta", vesta)
-        system_map.add_location("luna", luna)
-        system_map.add_location("mars", mars)
+        for loc in locations:
+            # Calculate cartesian coordinates from orbital parameters
+            angle_rad = math.radians(loc["angle"])
+            x = center_x + loc["radius"] * math.cos(angle_rad)
+            y = center_y + loc["radius"] * math.sin(angle_rad)
         
-        # Set player location
-        system_map.set_player_location("psyche")
+            location = Location(loc["name"], f"{loc['name']} - {loc['faction']} control", 
+                              f"{loc['id']}_map.csv", position=(x, y), faction=loc["faction"])
         
+            system_map.add_location(loc["id"], location)
+        
+            # Store reference for space travel - scale up coordinates for the space mode
+            self.map_locations[loc["id"]] = {
+                "name": loc["name"],
+                "pos": [x * 6, y * 6],  # Scale up for space travel
+                "color": self.get_faction_color(loc["faction"]),
+                "faction": loc["faction"],
+                "radius": loc["radius"],  # Store orbital data for possible animations
+                "angle": loc["angle"]
+            }
+    
+        # Add orbital rings to the map (will need to implement in SystemMap.draw)
+        system_map.orbital_rings = [150, 250, 350, 450, 650, 850, 1000]
+    
+        # Add connections between locations (focusing on realistic travel paths)
+        # A ship would typically travel along orbital paths rather than directly
+        for loc_id, connections in {
+            # Inner system connections
+            "earth": ["luna", "mars", "venus"],
+            "luna": ["earth"],
+            "mars": ["earth", "psyche", "ceres"],
+        
+            # Asteroid belt connections
+            "ceres": ["mars", "vesta", "psyche", "rusty_rocket"],
+            "psyche": ["mars", "pallas", "vesta", "ceres"],
+            "vesta": ["ceres", "psyche"],
+            "pallas": ["psyche"],
+        
+            # Special location connections
+            "rusty_rocket": ["ceres"],
+        
+            # Outer system connections
+            "jupiter": ["saturn"],
+            "saturn": ["jupiter"]
+        }.items():
+            location = system_map.locations.get(loc_id)
+            if location:
+                for conn in connections:
+                    dest = system_map.locations.get(conn)
+                    if dest:
+                        # Calculate distance based on positions
+                        dx = location.position[0] - dest.position[0]
+                        dy = location.position[1] - dest.position[1]
+                        distance = int(math.sqrt(dx*dx + dy*dy))
+                        location.add_connection(conn, distance)
+    
+        # Set player location - start at Earth, Luna, or Mars
+        system_map.set_player_location("mars")
+    
         return system_map
     
+    def get_faction_color(self, faction):
+        """Get color based on faction, 3/16/25"""
+        if faction == "earth":
+            return (0, 100, 255)  # Blue for Earth
+        elif faction == "mars":
+            return (255, 100, 0)  # Red-orange for Mars
+        elif faction == "pallas":
+            return (150, 0, 150)  # Purple for Pallas
+        else:
+            return (200, 200, 200)  # Default gray for neutrals
+
     def create_locations(self):
         """Create detailed location information"""
         locations = {}
@@ -649,8 +707,6 @@ class AsteroidFrontier:
             self.npcs = pygame.sprite.Group()  # Empty NPCs
             return False  # Still return False to indicate failure
     
-    
-    
     def check_exit_collision(self):
         """Check if player is colliding with an exit tile, 3/8/25"""
         # Make sure we have a valid current_level object
@@ -680,9 +736,9 @@ class AsteroidFrontier:
             if distance < TILE_SIZE * 1.5:
                 self.near_exit = True
             
-                # Only show travel menu if T key is pressed
+                # Only show travel menu if E key is pressed
                 keys = pygame.key.get_pressed()
-                if keys[pygame.K_t]:
+                if keys[pygame.K_e]:
                     # Special handling for ship cabin
                     if self.current_level and self.current_level.get("name") == "ship_cabin":
                         print("Exit from ship cabin detected")
@@ -690,11 +746,11 @@ class AsteroidFrontier:
                         return True
                     else:
                         # Regular travel for other locations
-                        print("T key pressed, showing travel menu")
+                        print("E key pressed, showing travel menu")
                         self.show_travel_options()
                         return True
             
-                # Display hint even if T is not pressed
+                # Display hint even if E is not pressed
                 return False
     
         # Not near any exit
@@ -702,140 +758,199 @@ class AsteroidFrontier:
         return False
 
     def handle_events(self):
-        """Process game events, eva mode 3/11/25"""
+        """Process game events, fancy map 3/16/25"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
         
-            # Handle merchant events if in merchant mode
-            if self.game_state == GameState.MERCHANT:
-                if self.handle_merchant_events(event):
-                    continue
+            # First check if we're in any menu mode
+            menu_open = self.show_inventory or self.show_map or self.show_quest_log
+        
+            if menu_open:
+                # Handle menu navigation events
+                if event.type == pygame.KEYDOWN:
+                    # Tab key or number keys for switching tabs
+                    if event.key == pygame.K_TAB:
+                        self.active_tab = (self.active_tab + 1) % 4
+                        # Update flags based on active tab
+                        self.show_inventory = (self.active_tab in [0, 1])  # Items or Self
+                        self.show_map = (self.active_tab == 2)
+                        self.show_quest_log = (self.active_tab == 3)
+                        return True
+                    elif pygame.K_1 <= event.key <= pygame.K_4:
+                        self.active_tab = event.key - pygame.K_1
+                        self.show_inventory = (self.active_tab in [0, 1])
+                        self.show_map = (self.active_tab == 2)
+                        self.show_quest_log = (self.active_tab == 3)
+                        return True
+                
+                    # ESC to close menu
+                    elif event.key == pygame.K_ESCAPE:
+                        self.show_inventory = False
+                        self.show_map = False
+                        self.show_quest_log = False
+                        return True
+                
+                    # Map navigation with arrow keys - only when on map tab
+                    elif self.show_map and self.active_tab == 2:
+                        # Initialize map_offset if it doesn't exist
+                        if not hasattr(self, 'map_offset'):
+                            self.map_offset = [0, 0]
+                    
+                        # Move map with arrow keys
+                        if event.key == pygame.K_LEFT:
+                            self.map_offset[0] += 50  # Move map right (view left)
+                            return True
+                        elif event.key == pygame.K_RIGHT:
+                            self.map_offset[0] -= 50  # Move map left (view right)
+                            return True
+                        elif event.key == pygame.K_UP:
+                            self.map_offset[1] += 50  # Move map down (view up)
+                            return True
+                        elif event.key == pygame.K_DOWN:
+                            self.map_offset[1] -= 50  # Move map up (view down)
+                            return True
+                        elif event.key == pygame.K_HOME:
+                            # Reset map position
+                            self.map_offset = [0, 0]
+                            return True
+        
+            # Regular event handling for game when menu is not open
+            if not menu_open:
+                        
+                # Handle merchant events if in merchant mode
+                if self.game_state == GameState.MERCHANT:
+                    if self.handle_merchant_events(event):
+                        continue
             
-            if event.type == pygame.KEYDOWN:
+                if event.type == pygame.KEYDOWN:
                 
-                # Special key combinations for save/load
-                if event.key == pygame.K_F5:
-                    # Quick save
-                    if hasattr(self, 'save_system'):
-                        self.save_system.quick_save()
-                        return True
+                    # Special key combinations for save/load
+                    if event.key == pygame.K_F5:
+                        # Quick save
+                        if hasattr(self, 'save_system'):
+                            self.save_system.quick_save()
+                            return True
         
-                if event.key == pygame.K_F9:
-                    # Quick load
-                    if hasattr(self, 'save_system'):
-                        self.save_system.quick_load()
-                        return True
+                    if event.key == pygame.K_F9:
+                        # Quick load
+                        if hasattr(self, 'save_system'):
+                            self.save_system.quick_load()
+                            return True
         
-                if event.key == pygame.K_F6:
-                    # Save menu
-                    self.game_state = GameState.SAVE_MENU
-                    self.update_save_load_menus()
-                    return True
+                    if event.key == pygame.K_F6:
+                        # Save menu
+                        self.game_state = GameState.SAVE_MENU
+                        self.update_save_load_menus()
+                        return True
     
-                if event.key == pygame.K_F7:
-                    # Load menu
-                    self.game_state = GameState.LOAD_MENU
-                    self.update_save_load_menus()
-                    return True
+                    if event.key == pygame.K_F7:
+                        # Load menu
+                        self.game_state = GameState.LOAD_MENU
+                        self.update_save_load_menus()
+                        return True
 
-                # Special handling for EVA mode
-                if event.key == pygame.K_ESCAPE and self.current_level and self.current_level.get("name") == "ship_eva":
-                    print("ESC pressed in EVA mode - returning to ship")
-                    self.end_eva()
-                    return True
+                    # Special handling for EVA mode
+                    if event.key == pygame.K_ESCAPE and self.current_level and self.current_level.get("name") == "ship_eva":
+                        print("ESC pressed in EVA mode - returning to ship")
+                        self.end_eva()
+                        return True
                 
-                # Merchant system
+                    # Merchant system
 
-                # Main menu Enter key handling
-                if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
-                    print("Enter key pressed at main menu, transitioning to OVERWORLD")
-                    self.game_state = GameState.OVERWORLD
-                    return True
-
-                # Handle escape key safely
-                if event.key == pygame.K_ESCAPE:
-                    if self.game_state == GameState.SPACE_TRAVEL:
-                        # Ask for confirmation before exiting space mode
-                        # For now, just go back to the last location
-                        if self.current_level and 'name' in self.current_level:
-                            self.load_location(self.current_level['name'])
-                            self.game_state = GameState.OVERWORLD
-                            self.in_space_mode = False
-                        else:
-                            # Fallback to main menu
-                            self.game_state = GameState.MAIN_MENU
-                    elif self.game_state == GameState.MAIN_MENU:
-                        return False
-                    # Other states...
-                    elif self.game_state == GameState.MAIN_MENU:
-                        return False
-                    elif self.game_state == GameState.TRAVEL_MENU:
-                        print("Escape from travel menu, returning to OVERWORLD")
+                    # Main menu Enter key handling
+                    if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
+                        print("Enter key pressed at main menu, transitioning to OVERWORLD")
                         self.game_state = GameState.OVERWORLD
                         return True
-                    else:
-                        self.game_state = GameState.MAIN_MENU
-            
-                # Handle events for Save Menu states
-                if self.game_state == GameState.SAVE_MENU or self.game_state == GameState.LOAD_MENU:
-                    if hasattr(self, 'save_load_menu'):
-                        self.save_load_menu.handle_event(event, self)
-                        return True
-                
-                # Safe travel menu input handling
-                if self.game_state == GameState.TRAVEL_MENU:
-                    try:
-                        # Number keys 1-9
-                        if pygame.K_1 <= event.key <= pygame.K_9:
-                            index = event.key - pygame.K_1
-                            print(f"Travel menu selection: index {index}")
-                        
-                            if 0 <= index < len(self.travel_options):
-                                destination = self.travel_options[index]
-                                print(f"Selected destination: {destination}")
-                            
-                                # First change state to avoid issues
+
+                    # Handle escape key safely
+                    if event.key == pygame.K_ESCAPE:
+                        if self.game_state == GameState.SPACE_TRAVEL:
+                            # Ask for confirmation before exiting space mode
+                            # For now, just go back to the last location
+                            if self.current_level and 'name' in self.current_level:
+                                self.load_location(self.current_level['name'])
                                 self.game_state = GameState.OVERWORLD
-                            
-                                # Then initiate travel
-                                success = self.travel_to_location(destination)
-                                if not success:
-                                    print(f"Travel to {destination} failed!")
-                                    # No state change needed, already set to OVERWORLD
+                                self.in_space_mode = False
                             else:
-                                print(f"Invalid selection index: {index}")
-                    except Exception as e:
-                        print(f"ERROR in travel menu handling: {e}")
-                        self.game_state = GameState.OVERWORLD  # Recover gracefully
+                                # Fallback to main menu
+                                self.game_state = GameState.MAIN_MENU
+                        elif self.game_state == GameState.MAIN_MENU:
+                            return False
+                        # Other states...
+                        elif self.game_state == GameState.MAIN_MENU:
+                            return False
+                        elif self.game_state == GameState.TRAVEL_MENU:
+                            print("Escape from travel menu, returning to OVERWORLD")
+                            self.game_state = GameState.OVERWORLD
+                            return True
+                        else:
+                            self.game_state = GameState.MAIN_MENU
             
-                # Your other key handlers here...
-                if event.key == pygame.K_i:
-                    self.show_inventory = not self.show_inventory
+                    # Handle events for Save Menu states
+                    if self.game_state == GameState.SAVE_MENU or self.game_state == GameState.LOAD_MENU:
+                        if hasattr(self, 'save_load_menu'):
+                            self.save_load_menu.handle_event(event, self)
+                            return True
+                
+                    # Safe travel menu input handling
+                    if self.game_state == GameState.TRAVEL_MENU:
+                        try:
+                            # Number keys 1-9
+                            if pygame.K_1 <= event.key <= pygame.K_9:
+                                index = event.key - pygame.K_1
+                                print(f"Travel menu selection: index {index}")
+                        
+                                if 0 <= index < len(self.travel_options):
+                                    destination = self.travel_options[index]
+                                    print(f"Selected destination: {destination}")
+                            
+                                    # First change state to avoid issues
+                                    self.game_state = GameState.OVERWORLD
+                                
+                                    # Then initiate travel
+                                    success = self.travel_to_location(destination)
+                                    if not success:
+                                        print(f"Travel to {destination} failed!")
+                                        # No state change needed, already set to OVERWORLD
+                                else:
+                                    print(f"Invalid selection index: {index}")
+                        except Exception as e:
+                            print(f"ERROR in travel menu handling: {e}")
+                            self.game_state = GameState.OVERWORLD  # Recover gracefully
             
-                if event.key == pygame.K_m:
-                    self.show_map = not self.show_map
+                    # Your other key handlers here...
+                    # Regular event handling (from your existing code)
+                    if event.type == pygame.KEYDOWN:
+                        # Open menu with Q key
+                        if event.key == pygame.K_q and self.game_state == GameState.OVERWORLD:
+                            self.show_inventory = not self.show_inventory
+                            if self.show_inventory:
+                                self.active_tab = 0  # Items tab
+                                self.show_map = False
+                                self.show_quest_log = False
+                            return True
             
-                if event.key == pygame.K_q:
-                    self.show_quest_log = not self.show_quest_log
+                    # ... your other event handling ...
             
-                # Handle dialogue key input
-                if self.dialogue_manager.is_dialogue_active():
-                    self.dialogue_manager.handle_key(event.key)
-        
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Left click
+                    # Handle dialogue key input
                     if self.dialogue_manager.is_dialogue_active():
-                        self.dialogue_manager.handle_click(event.pos)
-                    elif self.game_state == GameState.OVERWORLD:
-                        # Check for NPC interaction if we're close enough
-                        for npc in self.npcs:
-                            if pygame.sprite.collide_rect(self.player, npc):
-                                self.dialogue_manager.start_dialogue(npc, self.player)
-                                self.game_state = GameState.DIALOGUE
-                                break
+                        self.dialogue_manager.handle_key(event.key)
+        
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Left click
+                        if self.dialogue_manager.is_dialogue_active():
+                            self.dialogue_manager.handle_click(event.pos)
+                        elif self.game_state == GameState.OVERWORLD:
+                            # Check for NPC interaction if we're close enough
+                            for npc in self.npcs:
+                                if pygame.sprite.collide_rect(self.player, npc):
+                                    self.dialogue_manager.start_dialogue(npc, self.player)
+                                    self.game_state = GameState.DIALOGUE
+                                    break
     
-        return True
+            return True
     
     def update(self, dt):
         """Update game state with ship interactions, 3/11/25"""
@@ -1089,7 +1204,7 @@ class AsteroidFrontier:
             return False
         
     def draw(self):
-        """Render the game, space mvp 3/7/25"""
+        """Render the game, Overmenu 3/16/25"""
         screen.fill(SPACE_BG)
 
          # Draw space travel
@@ -1136,17 +1251,9 @@ class AsteroidFrontier:
             if self.game_state != GameState.DIALOGUE:
                 self.draw_ui()
         
-            # Draw inventory if shown
-            if self.show_inventory:
-                self.draw_inventory()
-        
-            # Draw map if shown
-            if self.show_map:
-                self.draw_map()
-        
-            # Draw quest log if shown
-            if self.show_quest_log:
-                self.draw_quest_log()
+            # Draw the menu if any menu view is active
+            if self.show_inventory or self.show_map or self.show_quest_log:
+                self.draw_menu_screen()
         
             # Draw travel menu if in that state
             if self.game_state == GameState.TRAVEL_MENU:
@@ -1263,11 +1370,11 @@ class AsteroidFrontier:
             exit_text = None
             if self.current_level and self.current_level.get("name") == "ship_cabin":
                 if hasattr(self, 'docked_location') and self.docked_location:
-                    exit_text = font.render(f"Press T to disembark to {self.docked_location.replace('_', ' ').title()}", True, (0, 255, 0))
+                    exit_text = font.render(f"Press E to disembark to {self.docked_location.replace('_', ' ').title()}", True, (0, 255, 0))
                 else:
-                    exit_text = font.render("Press T to perform EVA", True, (0, 255, 0))
+                    exit_text = font.render("Press E to perform EVA", True, (0, 255, 0))
             else:
-                exit_text = font.render("Press T to travel to a new location", True, (0, 255, 0))
+                exit_text = font.render("Press E to travel to a new location", True, (0, 255, 0))
             
             if exit_text:
                 screen.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 60))
@@ -1284,36 +1391,80 @@ class AsteroidFrontier:
                 screen.blit(helm_text, (SCREEN_WIDTH//2 - helm_text.get_width()//2, SCREEN_HEIGHT - 90))
     
         # Controls hint
-        controls = font.render("I: Inventory | M: Map | Q: Quests | E: Interact | T: Travel", True, WHITE)
+        controls = font.render("Q: Menu | E: Interact | T: Trade", True, WHITE)
         screen.blit(controls, (SCREEN_WIDTH//2 - controls.get_width()//2, SCREEN_HEIGHT - 30))
     
-    def draw_inventory(self):
-        """Draw the player's inventory with separate player and ship cargo sections"""
-        # Create an inventory panel
+    def draw_menu_screen(self):
+        """Draw the unified tabbed menu screen, 3/16/25"""
+        # Create the main panel
         panel_rect = pygame.Rect(50, 50, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100)
         pygame.draw.rect(screen, (0, 0, 0), panel_rect)
         pygame.draw.rect(screen, WHITE, panel_rect, 2)
     
-        font = pygame.font.Font(None, 32)
-        title = font.render("Inventory", True, WHITE)
-        screen.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 10))
+        # Define tabs
+        tab_y = panel_rect.y + 10
+        tab_height = 40
+        tab_width = panel_rect.width // 4
+    
+        tabs = ["Items", "Self", "Map", "Quests"]
+    
+        # Draw tabs
+        for i, tab_name in enumerate(tabs):
+            tab_rect = pygame.Rect(panel_rect.x + i * tab_width, tab_y, tab_width, tab_height)
+        
+            # Highlight active tab
+            if i == self.active_tab:
+                pygame.draw.rect(screen, (70, 70, 100), tab_rect)
+            else:
+                pygame.draw.rect(screen, (30, 30, 50), tab_rect)
+            
+            pygame.draw.rect(screen, WHITE, tab_rect, 1)
+        
+            # Tab text
+            tab_font = pygame.font.Font(None, 28)
+            tab_text = tab_font.render(tab_name, True, WHITE)
+            screen.blit(tab_text, (tab_rect.centerx - tab_text.get_width()//2, 
+                                 tab_rect.centery - tab_text.get_height()//2))
+    
+        # Draw content area
+        content_rect = pygame.Rect(panel_rect.x, panel_rect.y + tab_height + 20, 
+                                panel_rect.width, panel_rect.height - tab_height - 40)
+    
+        # Draw appropriate content based on active tab
+        if self.active_tab == 0:
+            self.draw_items_tab(content_rect)
+        elif self.active_tab == 1:
+            self.draw_self_tab(content_rect)
+        elif self.active_tab == 2:
+            self.draw_map_tab(content_rect)
+        elif self.active_tab == 3:
+            self.draw_quests_tab(content_rect)
+    
+        # Draw navigation instructions
+        nav_font = pygame.font.Font(None, 24)
+        nav_text = nav_font.render("Tab/1-4: Switch Tabs | Q: Close Menu", True, (150, 150, 150))
+        screen.blit(nav_text, (panel_rect.centerx - nav_text.get_width()//2, panel_rect.bottom - 30))
+        
+    def draw_items_tab(self, content_rect):
+        """Draw the items inventory tab, 3/16/25"""
+        # Existing inventory drawing code, adjusted to fit in content_rect
     
         item_font = pygame.font.Font(None, 24)
         section_font = pygame.font.Font(None, 28)
     
         # Calculate the dividing line position
-        divider_y = panel_rect.y + panel_rect.height // 2
-        pygame.draw.line(screen, WHITE, (panel_rect.x + 20, divider_y), 
-                    (panel_rect.right - 20, divider_y), 2)
+        divider_y = content_rect.y + content_rect.height // 2
+        pygame.draw.line(screen, WHITE, (content_rect.x + 20, divider_y), 
+                    (content_rect.right - 20, divider_y), 2)
     
         # === PLAYER INVENTORY SECTION ===
         player_section = section_font.render("Personal Items", True, (200, 200, 255))
-        screen.blit(player_section, (panel_rect.x + 20, panel_rect.y + 50))
+        screen.blit(player_section, (content_rect.x + 20, content_rect.y + 50))
     
         # Show credits
         if hasattr(self.player, 'credits'):
             credits_text = item_font.render(f"Credits: {self.player.credits}", True, (255, 255, 0))
-            screen.blit(credits_text, (panel_rect.right - credits_text.get_width() - 20, panel_rect.y + 50))
+            screen.blit(credits_text, (content_rect.right - credits_text.get_width() - 20, content_rect.y + 50))
     
         # Check if player has inventory attribute
         if hasattr(self.player, 'inventory') and hasattr(self.player.inventory, 'items'):
@@ -1322,13 +1473,13 @@ class AsteroidFrontier:
                           if not hasattr(item, 'type') or item.type != 'resource']
         
             if len(player_items) > 0:
-                y_offset = panel_rect.y + 80
+                y_offset = content_rect.y + 80
             
                 for i, item in enumerate(player_items):
                     # Skip if too many items to display
                     if i >= 8:  # Limit items per section
                         more_text = item_font.render(f"... and {len(player_items) - 8} more items", True, WHITE)
-                        screen.blit(more_text, (panel_rect.x + 20, y_offset))
+                        screen.blit(more_text, (content_rect.x + 20, y_offset))
                         break
                 
                     # Get item quantity
@@ -1340,22 +1491,22 @@ class AsteroidFrontier:
                     else:
                         item_text = item_font.render(f"{item.name}", True, WHITE)
                 
-                    screen.blit(item_text, (panel_rect.x + 20, y_offset))
+                    screen.blit(item_text, (content_rect.x + 20, y_offset))
                 
                     # Add value if item has value
                     if hasattr(item, 'value') and item.value > 0:
                         value_text = item_font.render(f"{item.value} credits", True, (200, 200, 100))
-                        screen.blit(value_text, (panel_rect.x + 300, y_offset))
+                        screen.blit(value_text, (content_rect.x + 300, y_offset))
                 
                     y_offset += 25
             else:
                 # No items
                 no_items_text = item_font.render("No personal items", True, WHITE)
-                screen.blit(no_items_text, (panel_rect.x + 20, panel_rect.y + 80))
+                screen.blit(no_items_text, (content_rect.x + 20, content_rect.y + 80))
     
         # === SHIP CARGO SECTION ===
         cargo_section = section_font.render("Ship Cargo", True, (200, 255, 200))
-        screen.blit(cargo_section, (panel_rect.x + 20, divider_y + 20))
+        screen.blit(cargo_section, (content_rect.x + 20, divider_y + 20))
     
         # Get cargo capacity (access directly from space_travel.ship)
         cargo_capacity = 100  # Default
@@ -1373,7 +1524,7 @@ class AsteroidFrontier:
         # Show cargo capacity with usage
         capacity_text = item_font.render(f"Cargo: {current_cargo}/{cargo_capacity}", True, 
                                        (200, 200, 200) if current_cargo < cargo_capacity else (255, 100, 100))
-        screen.blit(capacity_text, (panel_rect.right - capacity_text.get_width() - 20, divider_y + 20))
+        screen.blit(capacity_text, (content_rect.right - capacity_text.get_width() - 20, divider_y + 20))
     
         # Get from asteroid_field if it exists
         if hasattr(self, 'space_travel') and hasattr(self.space_travel, 'asteroid_field'):
@@ -1399,14 +1550,14 @@ class AsteroidFrontier:
                 # Skip if too many items to display
                 if i >= 8:  # Limit items per section
                     more_text = item_font.render(f"... and {len(ship_resources) - 8} more resources", True, WHITE)
-                    screen.blit(more_text, (panel_rect.x + 20, y_offset))
+                    screen.blit(more_text, (content_rect.x + 20, y_offset))
                     break
             
                 # Format resource name for display
                 display_name = resource_name.replace('_', ' ').title()
             
                 resource_text = item_font.render(f"{display_name}: {amount}", True, WHITE)
-                screen.blit(resource_text, (panel_rect.x + 20, y_offset))
+                screen.blit(resource_text, (content_rect.x + 20, y_offset))
             
                 # Add estimated value based on merchant system if available
                 if hasattr(self, 'merchant_system'):
@@ -1414,68 +1565,309 @@ class AsteroidFrontier:
                                                                   self.current_level.get("name", "psyche_township"))
                     total_value = base_value * amount
                     value_text = item_font.render(f"{total_value} credits", True, (200, 200, 100))
-                    screen.blit(value_text, (panel_rect.x + 300, y_offset))
+                    screen.blit(value_text, (content_rect.x + 300, y_offset))
             
                 y_offset += 25
         else:
             no_cargo_text = item_font.render("Cargo hold empty", True, WHITE)
-            screen.blit(no_cargo_text, (panel_rect.x + 20, divider_y + 50))
+            screen.blit(no_cargo_text, (content_rect.x + 20, divider_y + 50))
     
-        # Draw navigation instructions
-        close_text = item_font.render("Press I to close", True, WHITE)
-        screen.blit(close_text, (panel_rect.centerx - close_text.get_width()//2, panel_rect.bottom - 30))
+    def draw_self_tab(self, content_rect):
+        """Draw the character status tab, 3/16/25"""
+        section_font = pygame.font.Font(None, 28)
+        item_font = pygame.font.Font(None, 24)
     
-    def draw_map(self):
-        """Draw the system map"""
-        panel_rect = pygame.Rect(50, 50, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100)
-        pygame.draw.rect(screen, (0, 0, 0, 200), panel_rect)
-        pygame.draw.rect(screen, WHITE, panel_rect, 2)
-        
-        font = pygame.font.Font(None, 32)
-        title = font.render("System Map", True, WHITE)
-        screen.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 10))
-        
-        # Draw the system map
-        self.system_map.draw(screen, offset=(panel_rect.x + 20, panel_rect.y + 50), scale=0.6)
-        
-        close_text = font.render("Press M to close", True, WHITE)
-        screen.blit(close_text, (panel_rect.centerx - close_text.get_width()//2, panel_rect.bottom - 30))
+        # Character Stats Section
+        stats_y = content_rect.y
+        pygame.draw.line(screen, WHITE, (content_rect.x + 20, stats_y + 30), 
+                        (content_rect.right - 20, stats_y + 30), 1)
     
-    def draw_quest_log(self):
-        """Draw the quest log"""
-        panel_rect = pygame.Rect(50, 50, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100)
-        pygame.draw.rect(screen, (0, 0, 0, 200), panel_rect)
-        pygame.draw.rect(screen, WHITE, panel_rect, 2)
-        
-        font = pygame.font.Font(None, 32)
-        title = font.render("Quest Log", True, WHITE)
-        screen.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 10))
-        
-        # In a real game, you'd list active quests here
-        quest_font = pygame.font.Font(None, 24)
-        
-        # Example quests
-        quests = [
-            {"title": "Supply Run", "description": "Collect supplies for the township.", "progress": "1/5 collected"},
-            {"title": "The Truth Behind the News", "description": "Help CV gather information.", "progress": "0/3 recorded"}
+        stats_text = section_font.render("Character Stats", True, (200, 200, 255))
+        screen.blit(stats_text, (content_rect.x + 20, stats_y))
+    
+        # Display stats like health, level, experience
+        stats_y += 40
+        stats = [
+            f"Health: {self.player.health}/{self.player.max_health}",
+            f"Level: {getattr(self.player, 'level', 1)}",
+            f"Credits: {self.player.credits}"
         ]
-        
-        y_offset = panel_rect.y + 50
-        for quest in quests:
-            quest_title = quest_font.render(quest["title"], True, (255, 255, 0))
-            screen.blit(quest_title, (panel_rect.x + 20, y_offset))
-            y_offset += 25
+    
+        # Add experience if available
+        if hasattr(self.player, 'experience') and hasattr(self.player, 'experience_to_level'):
+            stats.append(f"Experience: {self.player.experience}/{self.player.experience_to_level}")
+    
+        # Add skill points if available
+        if hasattr(self.player, 'skill_points'):
+            stats.append(f"Skill Points: {self.player.skill_points}")
+    
+        for stat in stats:
+            stat_text = item_font.render(stat, True, WHITE)
+            screen.blit(stat_text, (content_rect.x + 40, stats_y))
+            stats_y += 25
+    
+        # Skills Section
+        skills_y = stats_y + 20
+        pygame.draw.line(screen, WHITE, (content_rect.x + 20, skills_y), 
+                        (content_rect.right - 20, skills_y), 1)
+    
+        skills_text = section_font.render("Skills", True, (200, 200, 255))
+        screen.blit(skills_text, (content_rect.x + 20, skills_y + 10))
+    
+        # Display skills with levels
+        skills_y += 40
+        if hasattr(self.player, 'skills'):
+            for skill_name, skill_level in self.player.skills.items():
+                skill_text = item_font.render(f"{skill_name.capitalize()}: {skill_level}", True, WHITE)
+                screen.blit(skill_text, (content_rect.x + 40, skills_y))
+                skills_y += 25
+    
+        # Faction Relations
+        faction_y = skills_y + 20
+        pygame.draw.line(screen, WHITE, (content_rect.x + 20, faction_y), 
+                        (content_rect.right - 20, faction_y), 1)
+    
+        faction_text = section_font.render("Faction Standing", True, (200, 200, 255))
+        screen.blit(faction_text, (content_rect.x + 20, faction_y + 10))
+    
+        # Display faction relations
+        faction_y += 40
+        if hasattr(self.player, 'reputation'):
+            for faction_name, standing in self.player.reputation.items():
+                # Color code based on standing
+                if standing >= 50:
+                    color = (100, 255, 100)  # Green for allies
+                elif standing >= 0:
+                    color = (255, 255, 100)  # Yellow for neutral
+                else:
+                    color = (255, 100, 100)  # Red for enemies
             
-            quest_desc = quest_font.render(quest["description"], True, WHITE)
-            screen.blit(quest_desc, (panel_rect.x + 30, y_offset))
-            y_offset += 25
-            
-            quest_progress = quest_font.render(quest["progress"], True, (0, 255, 0))
-            screen.blit(quest_progress, (panel_rect.x + 30, y_offset))
-            y_offset += 40
+                faction_display = faction_name.replace('_', ' ').title()
+                faction_text = item_font.render(f"{faction_display}: {standing}", True, color)
+                screen.blit(faction_text, (content_rect.x + 40, faction_y))
+                faction_y += 25
         
-        close_text = quest_font.render("Press Q to close", True, WHITE)
-        screen.blit(close_text, (panel_rect.centerx - close_text.get_width()//2, panel_rect.bottom - 30))
+    def draw_map_tab(self, content_rect):
+        """Draw the map tab, 3/16/25"""
+        section_font = pygame.font.Font(None, 28)
+        item_font = pygame.font.Font(None, 24)
+    
+        # Title section
+        title_y = content_rect.y
+        map_title = section_font.render("System Map", True, (200, 200, 255))
+        screen.blit(map_title, (content_rect.x + 20, title_y))
+        pygame.draw.line(screen, WHITE, (content_rect.x + 20, title_y + 30), 
+                       (content_rect.right - 20, title_y + 30), 1)
+    
+        # Map instructions
+        if self.game_state == GameState.SPACE_TRAVEL:
+            # In space mode, show current location relative to others
+            instr_text = item_font.render("Current ship position shown in white", True, (255, 255, 0))
+            screen.blit(instr_text, (content_rect.x + 40, title_y + 40))
+        else:
+            instr_text = item_font.render("Known locations in the Asteroid Frontier", True, WHITE)
+            screen.blit(instr_text, (content_rect.x + 40, title_y + 40))
+    
+        # Draw the system map in a scaled area
+        map_area = pygame.Rect(content_rect.x + 20, title_y + 70, 
+                             content_rect.width - 40, content_rect.height - 100)
+    
+        # Draw the map background
+        pygame.draw.rect(screen, (10, 10, 30), map_area)
+        pygame.draw.rect(screen, (100, 100, 150), map_area, 1)
+    
+        # Draw the system map
+        map_scale = min(map_area.width/1000, map_area.height/1000)
+        self.system_map.draw(screen, offset=(map_area.x + 10, map_area.y + 10), scale=map_scale)
+    
+        # If in space mode, draw player's current position
+        if self.game_state == GameState.SPACE_TRAVEL and hasattr(self, 'space_travel'):
+            # Convert from space coordinates to map coordinates
+            space_x = self.space_travel.ship_pos[0] / 10
+            space_y = self.space_travel.ship_pos[1] / 10
+        
+            # Convert to screen coordinates
+            screen_x = map_area.x + 10 + space_x * map_scale
+            screen_y = map_area.y + 10 + space_y * map_scale
+        
+            # Draw player position
+            pygame.draw.circle(screen, (255, 255, 255), (int(screen_x), int(screen_y)), 5)
+            pygame.draw.circle(screen, (255, 0, 0), (int(screen_x), int(screen_y)), 7, 1)
+        
+            # Draw a label
+            pos_label = item_font.render("YOUR SHIP", True, (255, 255, 255))
+            screen.blit(pos_label, (int(screen_x) - pos_label.get_width()//2, int(screen_y) - 25))
+    
+        # Location list 
+        list_y = map_area.bottom + 10
+        list_title = section_font.render("Locations:", True, (200, 200, 255))
+        screen.blit(list_title, (content_rect.x + 20, list_y))
+    
+        # Get locations from system map
+        locations = []
+        if hasattr(self, 'system_map') and hasattr(self.system_map, 'locations'):
+            locations = list(self.system_map.locations.values())
+    
+        # Check if we need to scroll the locations (if there are many)
+        max_locations_shown = 3  # How many locations to show in the bottom panel
+        location_scroll = getattr(self, 'location_scroll', 0)
+    
+        # Draw visible locations
+        if locations:
+            # Create a horizontal list of locations
+            col_width = (content_rect.width - 60) // max_locations_shown
+            for i, location in enumerate(locations[location_scroll:location_scroll + max_locations_shown]):
+                loc_x = content_rect.x + 40 + i * col_width
+            
+                # Draw location name
+                name_text = item_font.render(location.name, True, self.get_faction_color(location.faction))
+                screen.blit(name_text, (loc_x, list_y + 30))
+            
+                # If in space mode, calculate distance to player
+                if self.game_state == GameState.SPACE_TRAVEL and hasattr(self, 'space_travel'):
+                    # Get location position in space coordinates
+                    if hasattr(self, 'map_locations') and location.id in self.map_locations:
+                        loc_pos = self.map_locations[location.id]["pos"]
+                    
+                        # Calculate distance
+                        dx = self.space_travel.ship_pos[0] - loc_pos[0]
+                        dy = self.space_travel.ship_pos[1] - loc_pos[1]
+                        distance = math.sqrt(dx*dx + dy*dy)
+                    
+                        # Show distance
+                        dist_text = item_font.render(f"Distance: {int(distance/100)} units", True, (200, 200, 200))
+                        screen.blit(dist_text, (loc_x, list_y + 50))
+                    
+                        # Show direction arrow (simplified)
+                        direction = f"Direction: "
+                        if abs(dx) > abs(dy):
+                            direction += "East" if dx > 0 else "West"
+                        else:
+                            direction += "South" if dy > 0 else "North"
+                    
+                        dir_text = item_font.render(direction, True, (200, 200, 200))
+                        screen.blit(dir_text, (loc_x, list_y + 70))
+    
+        # Scroll arrows if needed
+        if len(locations) > max_locations_shown:
+            # Left arrow
+            if location_scroll > 0:
+                pygame.draw.polygon(screen, (255, 255, 255), [
+                    (content_rect.x + 20, list_y + 50),
+                    (content_rect.x + 30, list_y + 40),
+                    (content_rect.x + 30, list_y + 60)
+                ])
+        
+            # Right arrow
+            if location_scroll < len(locations) - max_locations_shown:
+                pygame.draw.polygon(screen, (255, 255, 255), [
+                    (content_rect.right - 20, list_y + 50),
+                    (content_rect.right - 30, list_y + 40),
+                    (content_rect.right - 30, list_y + 60)
+                ])
+        
+        # Map legend at the bottom
+        legend_y = map_area.bottom + 10
+        legend_title = item_font.render("Legend:", True, (200, 200, 200))
+        screen.blit(legend_title, (content_rect.x + 20, legend_y))
+    
+        # Draw faction indicators
+        legend_items = [
+            {"color": (0, 100, 255), "text": "Earth Control"},
+            {"color": (255, 100, 0), "text": "Mars Control"},
+            {"color": (150, 0, 150), "text": "Pallas Control"},
+            {"color": (200, 200, 200), "text": "Independent"}
+        ]
+    
+        legend_x = content_rect.x + 100
+        for item in legend_items:
+            # Draw color square
+            pygame.draw.rect(screen, item["color"], (legend_x, legend_y, 15, 15))
+            # Draw text
+            text = item_font.render(item["text"], True, (200, 200, 200))
+            screen.blit(text, (legend_x + 20, legend_y))
+            legend_x += 150
+    
+    def draw_quests_tab(self, content_rect):
+        """Draw the quests tab, 3/16/25"""
+        section_font = pygame.font.Font(None, 28)
+        item_font = pygame.font.Font(None, 24)
+    
+        # Title section
+        title_y = content_rect.y
+        quest_title = section_font.render("Quest Log", True, (200, 200, 255))
+        screen.blit(quest_title, (content_rect.x + 20, title_y))
+        pygame.draw.line(screen, WHITE, (content_rect.x + 20, title_y + 30), 
+                        (content_rect.right - 20, title_y + 30), 1)
+    
+        # Active Quests Section
+        active_y = title_y + 40
+        active_text = section_font.render("Active Quests", True, (255, 255, 100))
+        screen.blit(active_text, (content_rect.x + 20, active_y))
+    
+        # Get player's active quests
+        active_quests = []
+        if hasattr(self.player, 'quests'):
+            active_quests = [q for q in self.player.quests if not getattr(q, 'completed', False)]
+    
+        # Display active quests
+        if active_quests:
+            quest_y = active_y + 30
+            for quest in active_quests:
+                # Quest title
+                quest_title = item_font.render(quest.title, True, (255, 255, 100))
+                screen.blit(quest_title, (content_rect.x + 40, quest_y))
+                quest_y += 25
+            
+                # Quest description
+                desc_text = item_font.render(quest.description, True, WHITE)
+                screen.blit(desc_text, (content_rect.x + 60, quest_y))
+                quest_y += 25
+            
+                # Quest objectives
+                for i, objective in enumerate(quest.objectives):
+                    # Check if we have progress data
+                    progress = ""
+                    if hasattr(quest, 'objective_progress') and i < len(quest.objective_progress):
+                        progress = f" ({quest.objective_progress[i]}/{quest.objective_targets[i]})"
+                
+                    # Color based on completion
+                    obj_color = (100, 255, 100) if (hasattr(quest, 'objective_progress') and 
+                                                i < len(quest.objective_progress) and 
+                                                quest.objective_progress[i] >= quest.objective_targets[i]) else WHITE
+                
+                    obj_text = item_font.render(f"• {objective}{progress}", True, obj_color)
+                    screen.blit(obj_text, (content_rect.x + 60, quest_y))
+                    quest_y += 20
+            
+                quest_y += 15  # Space between quests
+        else:
+            no_quests = item_font.render("No active quests", True, WHITE)
+            screen.blit(no_quests, (content_rect.x + 40, active_y + 30))
+    
+        # Completed Quests Section
+        completed_y = active_y + 200  # Fixed position or calculate based on number of active quests
+        pygame.draw.line(screen, WHITE, (content_rect.x + 20, completed_y - 10), 
+                        (content_rect.right - 20, completed_y - 10), 1)
+    
+        completed_text = section_font.render("Completed Quests", True, (100, 255, 100))
+        screen.blit(completed_text, (content_rect.x + 20, completed_y))
+    
+        # Get completed quests
+        completed_quests = []
+        if hasattr(self.player, 'quests'):
+            completed_quests = [q for q in self.player.quests if getattr(q, 'completed', False)]
+    
+        # Display completed quests (simpler list)
+        if completed_quests:
+            quest_y = completed_y + 30
+            for quest in completed_quests:
+                quest_text = item_font.render(f"✓ {quest.title}", True, (100, 255, 100))
+                screen.blit(quest_text, (content_rect.x + 40, quest_y))
+                quest_y += 25
+        else:
+            no_completed = item_font.render("No completed quests", True, WHITE)
+            screen.blit(no_completed, (content_rect.x + 40, completed_y + 30))
 
     def draw_travel_menu(self):
         """Draw the travel menu 3/4/25"""
@@ -1645,7 +2037,7 @@ class AsteroidFrontier:
         print("Space map initialization complete")
 
     def enter_space(self):
-        """Transition to space travel mode, space mvp 3/7/25"""
+        """Transition to space mode using map coordinates, 3/16/25"""
         print("Entering space travel mode")
     
         try:
@@ -1653,19 +2045,31 @@ class AsteroidFrontier:
             print("Creating SpaceTravel instance")
             self.space_travel = SpaceTravel(SCREEN_WIDTH, SCREEN_HEIGHT)
         
-            # Add locations from your game data
+            # Add locations from system map
             print("Adding locations to space travel")
-            for loc in self.locations_data:
-                if loc.get('id') != 'space':  # Skip the space location itself
+            if hasattr(self, 'map_locations'):
+                for loc_id, loc_data in self.map_locations.items():
                     self.space_travel.add_location(
-                        loc.get('id'),
-                        loc.get('name', 'Unknown'),
-                        random.randint(-3000, 3000),  # Random x position
-                        random.randint(-3000, 3000),  # Random y position
-                        (200, 200, 200)  # Default color
+                        loc_id,
+                        loc_data["name"],
+                        loc_data["pos"][0],  # Use stored x position
+                        loc_data["pos"][1],  # Use stored y position
+                        loc_data["color"]    # Use faction color
                     )
-            
-             # Initialize asteroid field if not already done
+                    print(f"Added location {loc_id} at {loc_data['pos']}")
+            else:
+                # Fallback if map_locations not initialized
+                for loc in self.locations_data:
+                    if loc.get('id') != 'space':  # Skip the space location itself
+                        self.space_travel.add_location(
+                            loc.get('id'),
+                            loc.get('name', 'Unknown'),
+                            random.randint(-3000, 3000),  # Random x position
+                            random.randint(-3000, 3000),  # Random y position
+                            (200, 200, 200)  # Default color
+                        )
+        
+            # Initialize asteroid field if not already done
             if hasattr(self.space_travel, 'asteroid_field'):
                 print("Using existing asteroid field")
             else:
@@ -1676,7 +2080,16 @@ class AsteroidFrontier:
             if hasattr(self, 'collected_resources'):
                 print("Restoring previously collected resources")
                 self.space_travel.asteroid_field.collected_resources = self.collected_resources
-
+        
+            # Set player position (optional)
+            # If docked, place near that location
+            if hasattr(self, 'docked_location') and self.docked_location and hasattr(self, 'map_locations'):
+                loc_data = self.map_locations.get(self.docked_location)
+                if loc_data:
+                    self.space_travel.ship_pos[0] = loc_data["pos"][0] + random.randint(-50, 50)
+                    self.space_travel.ship_pos[1] = loc_data["pos"][1] + random.randint(-50, 50)
+                    print(f"Positioned ship near {self.docked_location}")
+        
             # Set game state
             self.game_state = GameState.SPACE_TRAVEL
             print("Space travel mode activated successfully")
@@ -2337,8 +2750,6 @@ class AsteroidFrontier:
             'duration': 5,  # Frames the laser will be visible
             'current_frame': 0
         }
-                
-    
 
     def check_merchant_interaction(self):
         """Check if player is interacting with a merchant NPC, 3/11/25"""
@@ -2420,14 +2831,8 @@ def main():
     # Create the game
     game = AsteroidFrontier()
     
-    # Add save system
-    #game.add_save_system()
-    
     # Initialize gameplay systems
     game.initialize_systems()
-
-    # Add test key: Press Y to run game state test
-    print("Press Y to run game state test")
     
     # Game loop
     running = True

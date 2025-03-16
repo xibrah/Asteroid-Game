@@ -262,6 +262,21 @@ class Player(Character, pygame.sprite.Sprite):
         #self.inventory.add_item(ItemFactory.create_item("Medkit"))
         #self.inventory.add_item(ItemFactory.create_item("ore_sample"))
 
+        # Character progression
+        self.level = 1
+        self.experience = 0
+        self.experience_to_level = 100  # First level threshold
+        self.skill_points = 0
+    
+        # Skills
+        self.skills = {
+            "piloting": 1,       # Ship navigation
+            "engineering": 1,    # Repair and crafting
+            "combat": 1,         # Fighting effectiveness
+            "negotiation": 1,    # Dialogue options
+            "hacking": 1         # Accessing secure systems
+    }
+        
         # Reputation storage
         self.reputation = {
             "earth": 0,
@@ -364,6 +379,41 @@ class Player(Character, pygame.sprite.Sprite):
                 return npc
         return None
     
+    def gain_experience(self, amount):
+        """Award experience to the player and handle level ups, 3/16/25"""
+        self.experience += amount
+        print(f"Gained {amount} experience. Total: {self.experience}")
+    
+        # Check for level up
+        while self.experience >= self.experience_to_level:
+            self.level_up()
+
+    def level_up(self):
+        """Level up the character, 3/16/25"""
+        self.level += 1
+        self.experience -= self.experience_to_level
+    
+        # Increase next level threshold
+        self.experience_to_level = self.level * 100
+    
+        # Increase stats
+        self.max_health += 10
+        self.health = self.max_health  # Heal on level up
+    
+        # Skill points for player to allocate
+        self.skill_points = getattr(self, 'skill_points', 0) + 3
+    
+        print(f"Level up! Now level {self.level}")
+        print(f"Gained 3 skill points, now have {self.skill_points} to spend")
+
+    def increase_skill(self, skill_name):
+        """Increase a skill if player has skill points, 3/16/25"""
+        if self.skill_points > 0 and skill_name in self.skills:
+            self.skills[skill_name] += 1
+            self.skill_points -= 1
+            return True
+        return False
+
     def complete_quest(self, quest_id):
         """Mark a quest as completed and get rewards"""
         for quest in self.quests:
