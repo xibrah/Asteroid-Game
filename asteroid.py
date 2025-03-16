@@ -376,7 +376,7 @@ class AsteroidField:
         # Initialize asteroid field
         self.spawn_initial_asteroids()
     
-    def spawn_initial_asteroids(self, count=15):
+    def spawn_initial_asteroids(self, count=20):
         """Spawn initial asteroids in the field"""
         for _ in range(count):
             x = random.randint(100, self.width - 100)
@@ -415,7 +415,7 @@ class AsteroidField:
             # Spawn new asteroids if needed
             self.maintain_asteroid_count(player_x, player_y, view_width, view_height)
     
-    def maintain_asteroid_count(self, player_x, player_y, view_width, view_height, target_count=15):
+    def maintain_asteroid_count(self, player_x, player_y, view_width, view_height, target_count=20):
         """Ensure there are enough asteroids in the field"""
         if len(self.asteroids) < target_count:
             # Calculate spawn zones outside the visible area but not too far
@@ -461,7 +461,7 @@ class AsteroidField:
                 
                 self.asteroids.append(asteroid)
     
-    def handle_weapon_hit(self, x, y, radius=10, damage=20):
+    def handle_weapon_hit(self, x, y, radius=10, damage=30):
         """Handle a weapon hitting asteroids"""
         destroyed_asteroids = []
         

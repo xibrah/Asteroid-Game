@@ -203,65 +203,7 @@ class AsteroidFrontier:
     
         print("All systems initialized")
         
-    # def create_default_level(self):
-    #     """Create a minimal default level when other loading methods fail, 3/8/25"""
-    #     print("Creating default level as fallback")
-    #     self.current_level = {
-    #         "name": "default_level",
-    #         "walls": pygame.sprite.Group(),
-    #         "floor": pygame.sprite.Group(),
-    #         "objects": pygame.sprite.Group(),
-    #         "all_sprites": pygame.sprite.Group(),
-    #         "width": SCREEN_WIDTH,
-    #         "height": SCREEN_HEIGHT,
-    #         "player_start": (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-    #     }
     
-    #     # Create a basic room with walls and a floor
-    #     wall_size = TILE_SIZE
-    #     room_width = SCREEN_WIDTH - (wall_size * 2)
-    #     room_height = SCREEN_HEIGHT - (wall_size * 2)
-    
-    #     # Create floor
-    #     floor = pygame.sprite.Sprite()
-    #     floor.image = pygame.Surface((room_width, room_height))
-    #     floor.image.fill((50, 50, 50))  # Dark gray floor
-    #     floor.rect = floor.image.get_rect()
-    #     floor.rect.x = wall_size
-    #     floor.rect.y = wall_size
-    #     self.current_level["floor"].add(floor)
-    #     self.current_level["all_sprites"].add(floor)
-    
-    #     # Create walls (top, right, bottom, left)
-    #     wall_positions = [
-    #         (0, 0, SCREEN_WIDTH, wall_size),  # Top
-    #         (SCREEN_WIDTH - wall_size, 0, wall_size, SCREEN_HEIGHT),  # Right
-    #         (0, SCREEN_HEIGHT - wall_size, SCREEN_WIDTH, wall_size),  # Bottom
-    #         (0, 0, wall_size, SCREEN_HEIGHT)  # Left
-    #     ]
-    
-    #     for x, y, w, h in wall_positions:
-    #         wall = pygame.sprite.Sprite()
-    #         wall.image = pygame.Surface((w, h))
-    #         wall.image.fill((100, 100, 100))  # Gray walls
-    #         wall.rect = wall.image.get_rect()
-    #         wall.rect.x = x
-    #         wall.rect.y = y
-    #         self.current_level["walls"].add(wall)
-    #         self.current_level["all_sprites"].add(wall)
-    
-    #     # Add an exit
-    #     exit_tile = pygame.sprite.Sprite()
-    #     exit_tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #     exit_tile.image.fill((0, 255, 0))  # Green for exit
-    #     exit_tile.rect = exit_tile.image.get_rect()
-    #     exit_tile.rect.x = SCREEN_WIDTH // 2
-    #     exit_tile.rect.y = SCREEN_HEIGHT - (wall_size * 2)
-    #     exit_tile.is_exit = True
-    #     self.current_level["objects"].add(exit_tile)
-    #     self.current_level["all_sprites"].add(exit_tile)
-    
-    #     print("Default level created successfully")
         
     def load_npcs(self):
         """Load NPC data from JSON file"""
@@ -377,205 +319,7 @@ class AsteroidFrontier:
     
         return npc
 
-    # def load_map_from_file(self, map_file):
-    #     """Load a map from a text file, 3/8/25"""
-    #     # At the beginning of the function
-    #     print(f"Attempting to load map file: {map_file}")
-    #     try:
-    #         # Determine path for the map file
-    #         map_path = os.path.join('assets', 'maps', map_file)
-    #         print(f"Looking for map at: {map_path}")
-        
-    #         # Check if file exists
-    #         if not os.path.exists(map_path):
-    #             print(f"Map file not found: {map_path}")
-    #             return self.create_test_level(map_file.split('.')[0])  # Fallback to test level
-        
-    #         # Initialize level data
-    #         print(f"Map OK: {map_path}")
-    #         level = {}
-    #         level["name"] = map_file.split('.')[0]
-    #         level["walls"] = pygame.sprite.Group()
-    #         level["floor"] = pygame.sprite.Group()
-    #         level["objects"] = pygame.sprite.Group()
-    #         level["doors"] = pygame.sprite.Group()
-    #         level["all_sprites"] = pygame.sprite.Group()
-    #         level["npc_positions"] = {}  # Dictionary to store NPC starting positions
-    #         level["player_start"] = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)  # Default position
-        
-    #         # Map from characters to colors/types
-    #         tile_colors = {
-    #             'W': (100, 100, 100),  # Wall - Gray
-    #             'F': (50, 50, 50),     # Floor - Dark Gray
-    #             'D': (150, 75, 0),     # Door - Brown
-    #             'T': (120, 60, 20),    # Table - Dark Brown
-    #             'C': (160, 82, 45),    # Chair - Sienna
-    #             'B': (139, 69, 19),    # Bar/Bed - Saddle Brown
-    #             'S': (160, 120, 90),   # Storage - Tan
-    #             'M': (70, 70, 90),     # Machine/Military - Blue-Gray
-    #             'G': (173, 216, 230),  # Glass/Guard - Light Blue
-    #             'P': (169, 169, 169),  # Prison Cell - Dark Gray
-    #             'V': (135, 206, 235),  # Viewport - Sky Blue
-    #             'H': (105, 105, 105),  # Hangar - Dim Gray
-    #             'X': (192, 192, 192),  # Exhibit - Silver
-    #             'R': (128, 128, 128),  # Robot - Gray
-    #             'E': (0, 128, 0)       # Exit - Green
-    #         }
-        
-    #         # Read the map file
-    #         with open(map_path, 'r') as file:
-    #             y = 0
-    #             for line in file:
-    #                 # Skip comments and empty lines
-    #                 if line.strip().startswith('#') or not line.strip():
-    #                     continue
-                
-    #                 # Process each character in the line
-    #                 for x, char in enumerate(line.strip()):
-    #                     # Create a position
-    #                     pos_x = x * TILE_SIZE
-    #                     pos_y = y * TILE_SIZE
-                    
-    #                     # Create the appropriate tile based on the character
-    #                     if char == 'W':  # Wall
-    #                         wall = pygame.sprite.Sprite()
-    #                         wall.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                         wall.image.fill(tile_colors['W'])
-    #                         wall.rect = wall.image.get_rect()
-    #                         wall.rect.x = pos_x
-    #                         wall.rect.y = pos_y
-    #                         level["walls"].add(wall)
-    #                         level["all_sprites"].add(wall)
-                    
-    #                     elif char == 'D':  # Door
-    #                         door = pygame.sprite.Sprite()
-    #                         door.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                         door.image.fill(tile_colors['D'])
-    #                         door.rect = door.image.get_rect()
-    #                         door.rect.x = pos_x
-    #                         door.rect.y = pos_y
-    #                         level["doors"].add(door)
-    #                         level["all_sprites"].add(door)
-                    
-    #                     elif char == '@':  # Player starting position
-    #                         floor = pygame.sprite.Sprite()
-    #                         floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                         floor.image.fill(tile_colors['F'])
-    #                         floor.rect = floor.image.get_rect()
-    #                         floor.rect.x = pos_x
-    #                         floor.rect.y = pos_y
-    #                         level["floor"].add(floor)
-    #                         level["all_sprites"].add(floor)
-                        
-    #                         # Store player start position
-    #                         level["player_start"] = (pos_x, pos_y)
-                    
-    #                     elif char in '123456789':  # NPC position
-    #                         floor = pygame.sprite.Sprite()
-    #                         floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                         floor.image.fill(tile_colors['F'])
-    #                         floor.rect = floor.image.get_rect()
-    #                         floor.rect.x = pos_x
-    #                         floor.rect.y = pos_y
-    #                         level["floor"].add(floor)
-    #                         level["all_sprites"].add(floor)
-                        
-    #                         # Store NPC position
-    #                         level["npc_positions"][int(char)] = (pos_x, pos_y)
-    #                         print(f"Found NPC position {char} at ({pos_x}, {pos_y})")
-                    
-    #                     elif char == 'E':  # Exit
-    #                         exit_tile = pygame.sprite.Sprite()
-    #                         exit_tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                         exit_tile.image.fill((0, 255, 0))  # Bright green for visibility
-    #                         exit_tile.rect = exit_tile.image.get_rect()
-    #                         exit_tile.rect.x = pos_x
-    #                         exit_tile.rect.y = pos_y
-    #                         exit_tile.is_exit = True  # Make sure this attribute is set
-    #                         level["objects"].add(exit_tile)
-    #                         level["all_sprites"].add(exit_tile)
-    #                         print(f"Created exit tile at ({pos_x}, {pos_y})")
-                    
-    #                     elif char in tile_colors:  # Other defined tile types
-    #                         tile = pygame.sprite.Sprite()
-    #                         tile.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                         tile.image.fill(tile_colors[char])
-    #                         tile.rect = tile.image.get_rect()
-    #                         tile.rect.x = pos_x
-    #                         tile.rect.y = pos_y
-                        
-    #                         if char == 'F':
-    #                             level["floor"].add(tile)
-    #                         else:
-    #                             level["objects"].add(tile)
-                            
-    #                         level["all_sprites"].add(tile)
-                    
-    #                     else:  # Default to floor for any other character
-    #                         floor = pygame.sprite.Sprite()
-    #                         floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                         floor.image.fill(tile_colors['F'])
-    #                         floor.rect = floor.image.get_rect()
-    #                         floor.rect.x = pos_x
-    #                         floor.rect.y = pos_y
-    #                         level["floor"].add(floor)
-    #                         level["all_sprites"].add(floor)
-                
-    #                 y += 1  # Move to next row
-        
-    #         # Calculate map size from the loaded map data
-    #         map_width = 0
-    #         map_height = 0
-        
-    #         # Find furthest right wall and lowest wall
-    #         for sprite in level["all_sprites"]:
-    #             map_width = max(map_width, sprite.rect.right)
-    #             map_height = max(map_height, sprite.rect.bottom)
-        
-    #         # Store map dimensions in level data
-    #         level["width"] = max(map_width, SCREEN_WIDTH)  # Ensure at least screen width
-    #         level["height"] = max(map_height, SCREEN_HEIGHT)  # Ensure at least screen height
-        
-    #         # Update camera with map size
-    #         self.camera.set_map_size(level["width"], level["height"])
-        
-    #         # Add special handling for helm tiles in ship cabin
-    #         if map_file == "mvp_ship_cabin.csv":
-    #             # Store raw layout for easier access
-    #             level["layout"] = []
-            
-    #             # Open the map file again to read raw layout
-    #             try:
-    #                 map_path = os.path.join('assets', 'maps', map_file)
-    #                 with open(map_path, 'r') as file:
-    #                     for line in file:
-    #                         # Skip comments and empty lines
-    #                         if line.strip().startswith('#') or not line.strip():
-    #                             continue
-                        
-    #                         # Add the row to the layout
-    #                         level["layout"].append(line.strip())
-                
-    #                 print(f"Loaded raw layout with {len(level['layout'])} rows")
-                
-    #                 # Mark helm tiles specially
-    #                 for y, row in enumerate(level["layout"]):
-    #                     for x, tile in enumerate(row):
-    #                         if tile == 'H':  # Helm tile
-    #                             # Find the sprite at this position and mark it
-    #                             for sprite in level["all_sprites"]:
-    #                                 if sprite.rect.x == x * TILE_SIZE and sprite.rect.y == y * TILE_SIZE:
-    #                                     sprite.tile_type = 'helm'
-    #                                     print(f"Marked helm tile at ({x}, {y})")
-    #             except Exception as e:
-    #                 print(f"Error loading raw layout: {e}")
-    #                 # Continue without the raw layout - not critical
-        
-    #         return level
     
-    #     except Exception as e:
-    #         print(f"Error loading map {map_file}: {e}")
-    #         return self.create_test_level(map_file.split('.')[0])  # Fallback to test level
 
     def load_locations(self):
         """Load location data from JSON file"""
@@ -905,40 +649,7 @@ class AsteroidFrontier:
             self.npcs = pygame.sprite.Group()  # Empty NPCs
             return False  # Still return False to indicate failure
     
-    # def create_test_level(self, location_id):
-    #     """Create a test level with walls and floor - would be replaced with actual level loading"""
-    #     level = {}
-    #     level["name"] = location_id
-    #     level["walls"] = pygame.sprite.Group()
-    #     level["floor"] = pygame.sprite.Group()
-    #     level["objects"] = pygame.sprite.Group()
-    #     level["all_sprites"] = pygame.sprite.Group()
-        
-    #     # Create a simple room with walls around the edges
-    #     for x in range(25):
-    #         for y in range(20):
-    #             if x == 0 or x == 24 or y == 0 or y == 19:
-    #                 # Create a wall
-    #                 wall = pygame.sprite.Sprite()
-    #                 wall.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                 wall.image.fill((100, 100, 100))
-    #                 wall.rect = wall.image.get_rect()
-    #                 wall.rect.x = x * TILE_SIZE
-    #                 wall.rect.y = y * TILE_SIZE
-    #                 level["walls"].add(wall)
-    #                 level["all_sprites"].add(wall)
-    #             else:
-    #                 # Create a floor tile
-    #                 floor = pygame.sprite.Sprite()
-    #                 floor.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    #                 floor.image.fill((50, 50, 50))
-    #                 floor.rect = floor.image.get_rect()
-    #                 floor.rect.x = x * TILE_SIZE
-    #                 floor.rect.y = y * TILE_SIZE
-    #                 level["floor"].add(floor)
-    #                 level["all_sprites"].add(floor)
-        
-    #     return level
+    
     
     def check_exit_collision(self):
         """Check if player is colliding with an exit tile, 3/8/25"""
@@ -1646,13 +1357,13 @@ class AsteroidFrontier:
         cargo_section = section_font.render("Ship Cargo", True, (200, 255, 200))
         screen.blit(cargo_section, (panel_rect.x + 20, divider_y + 20))
     
-         # Collect ship resources
-        ship_resources = {}
-        
-        # Get ship's cargo capacity
-        cargo_capacity = 0
+        # Get cargo capacity (access directly from space_travel.ship)
+        cargo_capacity = 100  # Default
         if hasattr(self, 'space_travel') and hasattr(self.space_travel, 'ship'):
-            cargo_capacity = getattr(self.space_travel.ship, 'cargo_capacity', 0)
+            cargo_capacity = getattr(self.space_travel.ship, 'cargo_capacity', 100)
+    
+        # Collect ship resources - make sure to get fresh data each time
+        ship_resources = {}
         
         # Calculate current cargo usage
         current_cargo = 0
@@ -2627,60 +2338,7 @@ class AsteroidFrontier:
             'current_frame': 0
         }
                 
-    #debug stuff below#
-
-    # def test_game_states(self):
-    #     """Test function to verify game state transitions work correctly 3/4/25"""
-    #     print("\n--- RUNNING GAME STATE TEST ---")
     
-    #     # Get the current state
-    #     old_state = self.game_state
-    #     print(f"Current game state: {self.game_state}")
-    
-    #     # Try changing to each state and rendering a test screen
-    #     for state in [GameState.MAIN_MENU, GameState.OVERWORLD, GameState.DIALOGUE, 
-    #               GameState.INVENTORY, GameState.TRAVEL_MENU, GameState.SPACE_TRAVEL]:
-        
-    #         # Skip current state
-    #         if state == old_state:
-    #             continue
-            
-    #         print(f"Testing transition to state: {state}")
-        
-    #         # Set the state
-    #         self.game_state = state
-        
-    #         # Draw a test screen for this state
-    #         self._draw_test_screen(f"TEST: {state}")
-        
-    #         # Give a moment to see it
-    #         pygame.time.delay(1000)
-    
-    #     # Restore original state
-    #     print(f"Restoring original state: {old_state}")
-    #     self.game_state = old_state
-    
-    #     print("--- GAME STATE TEST COMPLETE ---\n")
-
-    # def _draw_test_screen(self, message):
-    #     """Draw a simple test screen with message 3/4/25"""
-    #     # Get the screen surface
-    #     screen = pygame.display.get_surface()
-    
-    #     # Fill with a color based on hash of the message (for variety)
-    #     color_seed = sum(ord(c) for c in message)
-    #     color = ((color_seed * 123) % 255, (color_seed * 45) % 255, (color_seed * 67) % 255)
-    #     screen.fill(color)
-    
-    #     # Draw the message
-    #     font = pygame.font.Font(None, 48)
-    #     text = font.render(message, True, (255, 255, 255))
-    #     screen.blit(text, (screen.get_width() // 2 - text.get_width() // 2, 
-    #                        screen.get_height() // 2 - text.get_height() // 2))
-    
-    #     # Update the display
-    #     pygame.display.flip()
-    #     print(f"Drew test screen for: {message}")
 
     def check_merchant_interaction(self):
         """Check if player is interacting with a merchant NPC, 3/11/25"""
