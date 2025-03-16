@@ -955,13 +955,38 @@ class AsteroidFrontier:
     def update(self, dt):
         """Update game state with ship interactions, 3/11/25"""
         if self.game_state == GameState.OVERWORLD:
-            # Update player
+            # Update player (only if menu is not open)
             keys = pygame.key.get_pressed()
-            if self.current_level and "walls" in self.current_level:
-                self.player.update(keys, dt, self.current_level["walls"])
+        
+            # Check if any UI menu is open before processing movement input
+            menu_open = self.show_inventory or self.show_map or self.show_quest_log
+        
+            if not menu_open:
+                # Only update player position if no menu is open
+                if self.current_level and "walls" in self.current_level:
+                    self.player.update(keys, dt, self.current_level["walls"])
+                else:
+                    # Fallback if no current level or walls
+                    self.player.update(keys, dt, None)
             else:
-                # Fallback if no current level or walls
-                self.player.update(keys, dt, None)
+                # Handle map navigation if map tab is open and arrow keys are pressed
+                if self.show_map and self.active_tab == 2:  # Map tab is active
+                    # Initialize map_offset if it doesn't exist
+                    if not hasattr(self, 'map_offset'):
+                        self.map_offset = [0, 0]
+                
+                    # Move map with arrow keys
+                    if keys[pygame.K_LEFT]:
+                        self.map_offset[0] += 20  # Move map right (view left)
+                    if keys[pygame.K_RIGHT]:
+                        self.map_offset[0] -= 20  # Move map left (view right)
+                    if keys[pygame.K_UP]:
+                        self.map_offset[1] += 20  # Move map down (view up)
+                    if keys[pygame.K_DOWN]:
+                        self.map_offset[1] -= 20  # Move map up (view down)
+                    if keys[pygame.K_HOME]:
+                        # Reset map position
+                        self.map_offset = [0, 0]
         
             # Update NPCs
             self.npcs.update(dt, self.player)
@@ -1648,74 +1673,85 @@ class AsteroidFrontier:
                 faction_y += 25
         
     def draw_map_tab(self, content_rect):
-        """Draw the map tab with location information, 3/16/25"""
+        """Draw the map tab with location information, fixed to stay within bounds"""
         section_font = pygame.font.Font(None, 28)
         item_font = pygame.font.Font(None, 24)
-    
+
         # Title section
         title_y = content_rect.y
         map_title = section_font.render("System Map", True, (200, 200, 255))
         screen.blit(map_title, (content_rect.x + 20, title_y))
         pygame.draw.line(screen, WHITE, (content_rect.x + 20, title_y + 30), 
                         (content_rect.right - 20, title_y + 30), 1)
-    
-         # Map instructions
+
+        # Map instructions
         if self.game_state == GameState.SPACE_TRAVEL:
             instructions = "Current ship position shown in white"
         else:
             instructions = "Arrow keys: Move view | Home: Reset view"
-    
+
         instr_text = item_font.render(instructions, True, WHITE)
         screen.blit(instr_text, (content_rect.x + 40, title_y + 40))
-    
-        # Draw the system map in a scaled area
+
+        # Create a surface for the map area with the exact dimensions needed
         map_area = pygame.Rect(content_rect.x + 20, title_y + 70, 
                              content_rect.width - 40, content_rect.height - 140)
     
-        # Draw the map background
-        pygame.draw.rect(screen, (10, 10, 30), map_area)
-        pygame.draw.rect(screen, (100, 100, 150), map_area, 1)
-    
+        # Create a new surface to draw the map on (this is the key change)
+        map_surface = pygame.Surface((map_area.width, map_area.height))
+        map_surface.fill((10, 10, 30))  # Dark background for the map
+        pygame.draw.rect(map_surface, (100, 100, 150), 
+                       (0, 0, map_area.width, map_area.height), 1)  # Border
+
         # Initialize map_offset if it doesn't exist
         if not hasattr(self, 'map_offset'):
             self.map_offset = [0, 0]
-    
-        # Draw the system map with the current offset
+
+        # Calculate scale and offset for drawing on our surface
         map_scale = min(map_area.width/1000, map_area.height/1000)
-        map_offset_x = map_area.x + 10 + self.map_offset[0]
-        map_offset_y = map_area.y + 10 + self.map_offset[1]
-        self.system_map.draw(screen, offset=(map_offset_x, map_offset_y), scale=map_scale)
     
-        # If in space mode, draw player's current position
+        # Draw the system map onto our surface, not directly to the screen
+        # Note the offsets are relative to the surface, not the screen
+        self.system_map.draw(map_surface, 
+                           offset=(10 + self.map_offset[0], 
+                                  10 + self.map_offset[1]), 
+                           scale=map_scale)
+
+        # If in space mode, draw player's current position on the map surface
         if self.game_state == GameState.SPACE_TRAVEL and hasattr(self, 'space_travel'):
             # Convert from space coordinates to map coordinates
             space_x = self.space_travel.ship_pos[0] / 10
             space_y = self.space_travel.ship_pos[1] / 10
         
-            # Convert to screen coordinates including the map offset
-            screen_x = map_offset_x + space_x * map_scale
-            screen_y = map_offset_y + space_y * map_scale
+            # Convert to surface coordinates including the map offset
+            surface_x = 10 + self.map_offset[0] + space_x * map_scale
+            surface_y = 10 + self.map_offset[1] + space_y * map_scale
         
-            # Make sure screen coordinates are in view (clip to map area)
-            if (map_area.x <= screen_x <= map_area.right and 
-                map_area.y <= screen_y <= map_area.bottom):
-                # Draw player position
-                pygame.draw.circle(screen, (255, 255, 255), (int(screen_x), int(screen_y)), 5)
-                pygame.draw.circle(screen, (255, 0, 0), (int(screen_x), int(screen_y)), 7, 1)
+            # Make sure coordinates are in view (clip to map surface)
+            if (0 <= surface_x <= map_area.width and 
+                0 <= surface_y <= map_area.height):
+                # Draw player position on the surface
+                pygame.draw.circle(map_surface, (255, 255, 255), 
+                                 (int(surface_x), int(surface_y)), 5)
+                pygame.draw.circle(map_surface, (255, 0, 0), 
+                                 (int(surface_x), int(surface_y)), 7, 1)
             
-                # Draw a label
+                # Draw a label on the surface
                 pos_label = item_font.render("YOUR SHIP", True, (255, 255, 255))
-                label_x = max(map_area.x, min(map_area.right - pos_label.get_width(), 
-                                            int(screen_x) - pos_label.get_width()//2))
-                label_y = max(map_area.y, min(map_area.bottom - pos_label.get_height(),
-                                            int(screen_y) - 25))
-                screen.blit(pos_label, (label_x, label_y))
-    
+                label_x = max(0, min(map_area.width - pos_label.get_width(), 
+                                    int(surface_x) - pos_label.get_width()//2))
+                label_y = max(0, min(map_area.height - pos_label.get_height(),
+                                    int(surface_y) - 25))
+                map_surface.blit(pos_label, (label_x, label_y))
+
+        # Now blit the entire map surface to the screen at the map_area position
+        screen.blit(map_surface, map_area.topleft)
+
         # Locations list at the bottom (keep this as a reference)
         location_list_y = map_area.bottom + 10
         list_title = section_font.render("Locations:", True, (200, 200, 255))
         screen.blit(list_title, (content_rect.x + 20, location_list_y))
-    
+
         # Draw visible locations in a simpler format
         visible_count = 0
         if hasattr(self, 'system_map') and hasattr(self.system_map, 'locations'):
