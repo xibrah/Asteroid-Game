@@ -784,8 +784,8 @@ class AsteroidFrontier:
                         self.show_quest_log = (self.active_tab == 3)
                         return True
                 
-                    # ESC to close menu
-                    elif event.key == pygame.K_ESCAPE:
+                    # Q to close menu
+                    elif event.key == pygame.K_q:
                         self.show_inventory = False
                         self.show_map = False
                         self.show_quest_log = False
@@ -1648,7 +1648,7 @@ class AsteroidFrontier:
                 faction_y += 25
         
     def draw_map_tab(self, content_rect):
-        """Draw the map tab, 3/16/25"""
+        """Draw the map tab with location information, 3/16/25"""
         section_font = pygame.font.Font(None, 28)
         item_font = pygame.font.Font(None, 24)
     
@@ -1657,28 +1657,34 @@ class AsteroidFrontier:
         map_title = section_font.render("System Map", True, (200, 200, 255))
         screen.blit(map_title, (content_rect.x + 20, title_y))
         pygame.draw.line(screen, WHITE, (content_rect.x + 20, title_y + 30), 
-                       (content_rect.right - 20, title_y + 30), 1)
+                        (content_rect.right - 20, title_y + 30), 1)
     
-        # Map instructions
+         # Map instructions
         if self.game_state == GameState.SPACE_TRAVEL:
-            # In space mode, show current location relative to others
-            instr_text = item_font.render("Current ship position shown in white", True, (255, 255, 0))
-            screen.blit(instr_text, (content_rect.x + 40, title_y + 40))
+            instructions = "Current ship position shown in white"
         else:
-            instr_text = item_font.render("Known locations in the Asteroid Frontier", True, WHITE)
-            screen.blit(instr_text, (content_rect.x + 40, title_y + 40))
+            instructions = "Arrow keys: Move view | Home: Reset view"
+    
+        instr_text = item_font.render(instructions, True, WHITE)
+        screen.blit(instr_text, (content_rect.x + 40, title_y + 40))
     
         # Draw the system map in a scaled area
         map_area = pygame.Rect(content_rect.x + 20, title_y + 70, 
-                             content_rect.width - 40, content_rect.height - 100)
+                             content_rect.width - 40, content_rect.height - 140)
     
         # Draw the map background
         pygame.draw.rect(screen, (10, 10, 30), map_area)
         pygame.draw.rect(screen, (100, 100, 150), map_area, 1)
     
-        # Draw the system map
+        # Initialize map_offset if it doesn't exist
+        if not hasattr(self, 'map_offset'):
+            self.map_offset = [0, 0]
+    
+        # Draw the system map with the current offset
         map_scale = min(map_area.width/1000, map_area.height/1000)
-        self.system_map.draw(screen, offset=(map_area.x + 10, map_area.y + 10), scale=map_scale)
+        map_offset_x = map_area.x + 10 + self.map_offset[0]
+        map_offset_y = map_area.y + 10 + self.map_offset[1]
+        self.system_map.draw(screen, offset=(map_offset_x, map_offset_y), scale=map_scale)
     
         # If in space mode, draw player's current position
         if self.game_state == GameState.SPACE_TRAVEL and hasattr(self, 'space_travel'):
@@ -1686,107 +1692,62 @@ class AsteroidFrontier:
             space_x = self.space_travel.ship_pos[0] / 10
             space_y = self.space_travel.ship_pos[1] / 10
         
-            # Convert to screen coordinates
-            screen_x = map_area.x + 10 + space_x * map_scale
-            screen_y = map_area.y + 10 + space_y * map_scale
+            # Convert to screen coordinates including the map offset
+            screen_x = map_offset_x + space_x * map_scale
+            screen_y = map_offset_y + space_y * map_scale
         
-            # Draw player position
-            pygame.draw.circle(screen, (255, 255, 255), (int(screen_x), int(screen_y)), 5)
-            pygame.draw.circle(screen, (255, 0, 0), (int(screen_x), int(screen_y)), 7, 1)
-        
-            # Draw a label
-            pos_label = item_font.render("YOUR SHIP", True, (255, 255, 255))
-            screen.blit(pos_label, (int(screen_x) - pos_label.get_width()//2, int(screen_y) - 25))
+            # Make sure screen coordinates are in view (clip to map area)
+            if (map_area.x <= screen_x <= map_area.right and 
+                map_area.y <= screen_y <= map_area.bottom):
+                # Draw player position
+                pygame.draw.circle(screen, (255, 255, 255), (int(screen_x), int(screen_y)), 5)
+                pygame.draw.circle(screen, (255, 0, 0), (int(screen_x), int(screen_y)), 7, 1)
+            
+                # Draw a label
+                pos_label = item_font.render("YOUR SHIP", True, (255, 255, 255))
+                label_x = max(map_area.x, min(map_area.right - pos_label.get_width(), 
+                                            int(screen_x) - pos_label.get_width()//2))
+                label_y = max(map_area.y, min(map_area.bottom - pos_label.get_height(),
+                                            int(screen_y) - 25))
+                screen.blit(pos_label, (label_x, label_y))
     
-        # Location list 
-        list_y = map_area.bottom + 10
+        # Locations list at the bottom (keep this as a reference)
+        location_list_y = map_area.bottom + 10
         list_title = section_font.render("Locations:", True, (200, 200, 255))
-        screen.blit(list_title, (content_rect.x + 20, list_y))
+        screen.blit(list_title, (content_rect.x + 20, location_list_y))
     
-        # Get locations from system map
-        locations = []
+        # Draw visible locations in a simpler format
+        visible_count = 0
         if hasattr(self, 'system_map') and hasattr(self.system_map, 'locations'):
-            locations = list(self.system_map.locations.values())
-    
-        # Check if we need to scroll the locations (if there are many)
-        max_locations_shown = 3  # How many locations to show in the bottom panel
-        location_scroll = getattr(self, 'location_scroll', 0)
-    
-        # Draw visible locations
-        if locations:
-            # Create a horizontal list of locations
-            col_width = (content_rect.width - 60) // max_locations_shown
-            for i, location in enumerate(locations[location_scroll:location_scroll + max_locations_shown]):
-                loc_x = content_rect.x + 40 + i * col_width
+            # Just show a few key locations at the bottom
+            key_locations = ["earth", "mars", "psyche", "ceres", "pallas"]
+            locations_shown = []
+        
+            for loc_id in key_locations:
+                if loc_id in self.system_map.locations:
+                    locations_shown.append(self.system_map.locations[loc_id])
+        
+            # Create a horizontal list of key locations
+            location_y = location_list_y + 30
+            location_x = content_rect.x + 40
+            for location in locations_shown:
+                if location_x > content_rect.right - 150:
+                    # Move to next row if we run out of space
+                    location_x = content_rect.x + 40
+                    location_y += 40
+                    if location_y > content_rect.bottom - 20:
+                        break  # No more space
+            
+                # Draw faction-colored dot
+                faction_color = self.get_faction_color(location.faction)
+                pygame.draw.circle(screen, faction_color, (location_x, location_y + 8), 5)
             
                 # Draw location name
-                name_text = item_font.render(location.name, True, self.get_faction_color(location.faction))
-                screen.blit(name_text, (loc_x, list_y + 30))
+                name_text = item_font.render(location.name, True, WHITE)
+                screen.blit(name_text, (location_x + 10, location_y))
             
-                # If in space mode, calculate distance to player
-                if self.game_state == GameState.SPACE_TRAVEL and hasattr(self, 'space_travel'):
-                    # Get location position in space coordinates
-                    if hasattr(self, 'map_locations') and location.id in self.map_locations:
-                        loc_pos = self.map_locations[location.id]["pos"]
-                    
-                        # Calculate distance
-                        dx = self.space_travel.ship_pos[0] - loc_pos[0]
-                        dy = self.space_travel.ship_pos[1] - loc_pos[1]
-                        distance = math.sqrt(dx*dx + dy*dy)
-                    
-                        # Show distance
-                        dist_text = item_font.render(f"Distance: {int(distance/100)} units", True, (200, 200, 200))
-                        screen.blit(dist_text, (loc_x, list_y + 50))
-                    
-                        # Show direction arrow (simplified)
-                        direction = f"Direction: "
-                        if abs(dx) > abs(dy):
-                            direction += "East" if dx > 0 else "West"
-                        else:
-                            direction += "South" if dy > 0 else "North"
-                    
-                        dir_text = item_font.render(direction, True, (200, 200, 200))
-                        screen.blit(dir_text, (loc_x, list_y + 70))
-    
-        # Scroll arrows if needed
-        if len(locations) > max_locations_shown:
-            # Left arrow
-            if location_scroll > 0:
-                pygame.draw.polygon(screen, (255, 255, 255), [
-                    (content_rect.x + 20, list_y + 50),
-                    (content_rect.x + 30, list_y + 40),
-                    (content_rect.x + 30, list_y + 60)
-                ])
-        
-            # Right arrow
-            if location_scroll < len(locations) - max_locations_shown:
-                pygame.draw.polygon(screen, (255, 255, 255), [
-                    (content_rect.right - 20, list_y + 50),
-                    (content_rect.right - 30, list_y + 40),
-                    (content_rect.right - 30, list_y + 60)
-                ])
-        
-        # Map legend at the bottom
-        legend_y = map_area.bottom + 10
-        legend_title = item_font.render("Legend:", True, (200, 200, 200))
-        screen.blit(legend_title, (content_rect.x + 20, legend_y))
-    
-        # Draw faction indicators
-        legend_items = [
-            {"color": (0, 100, 255), "text": "Earth Control"},
-            {"color": (255, 100, 0), "text": "Mars Control"},
-            {"color": (150, 0, 150), "text": "Pallas Control"},
-            {"color": (200, 200, 200), "text": "Independent"}
-        ]
-    
-        legend_x = content_rect.x + 100
-        for item in legend_items:
-            # Draw color square
-            pygame.draw.rect(screen, item["color"], (legend_x, legend_y, 15, 15))
-            # Draw text
-            text = item_font.render(item["text"], True, (200, 200, 200))
-            screen.blit(text, (legend_x + 20, legend_y))
-            legend_x += 150
+                location_x += name_text.get_width() + 40  # Space between locations
+                visible_count += 1
     
     def draw_quests_tab(self, content_rect):
         """Draw the quests tab, 3/16/25"""
