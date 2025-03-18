@@ -4,14 +4,10 @@ import math
 import os
 from opengl_engine import OpenGL3DEngine
 
-class GameState:
-    # Add to your existing GameState class
-    FIRST_PERSON_3D = 13  # New state for first-person OpenGL 3D view
-
-def initialize_3d(game):
+def initialize_3d(self):
     """Initialize the 3D engine and textures for the game"""
     # Create the 3D engine
-    game.engine_3d = OpenGL3DEngine(game.screen_width, game.screen_height)
+    self.engine_3d = OpenGL3DEngine(self.screen_width, self.screen_height)
     
     # Set up texture dictionaries
     wall_textures = {
@@ -36,11 +32,11 @@ def initialize_3d(game):
     create_placeholder_textures(wall_textures)
     
     # Load textures
-    game.engine_3d.load_textures(wall_textures)
+    self.engine_3d.load_textures(wall_textures)
     
     # Load sprite textures for NPCs and items
     sprite_textures = {}
-    for npc in game.npcs:
+    for npc in self.npcs:
         sprite_id = f"npc_{npc.name.lower().replace(' ', '_')}"
         sprite_path = f"assets/textures/sprites/{sprite_id}.png"
         
@@ -51,18 +47,18 @@ def initialize_3d(game):
         sprite_textures[sprite_id] = sprite_path
     
     # Load the sprite textures
-    game.engine_3d.load_sprite_textures(sprite_textures)
+    self.engine_3d.load_sprite_textures(sprite_textures)
     
     # Add 3D view controls to the game
-    game.fp_forward = False
-    game.fp_backward = False
-    game.fp_strafe_left = False
-    game.fp_strafe_right = False
-    game.fp_turn_left = False
-    game.fp_turn_right = False
+    self.fp_forward = False
+    self.fp_backward = False
+    self.fp_strafe_left = False
+    self.fp_strafe_right = False
+    self.fp_turn_left = False
+    self.fp_turn_right = False
     
     # Initialize 3D view angle
-    game.fp_angle = 0.0
+    self.fp_angle = 0.0
     
     return True
 
@@ -151,152 +147,152 @@ def create_placeholder_sprite(path, name):
     pygame.image.save(surface, path)
     print(f"Created placeholder sprite: {path}")
 
-def toggle_3d_view(game):
+def toggle_3d_view(self):
     """Toggle between 2D and 3D views"""
     # If we're not in 3D, switch to 3D
-    if game.game_state != GameState.FIRST_PERSON_3D:
+    if self.game_state != 12:
         print("Switching to 3D view")
-        game.previous_state = game.game_state
-        game.game_state = GameState.FIRST_PERSON_3D
+        self.previous_state = self.game_state
+        self.game_state = 12
         
         # Initialize the 3D engine if not already done
-        if not hasattr(game, 'engine_3d'):
-            initialize_3d(game)
+        if not hasattr(self, 'engine_3d'):
+            initialize_3d(self)
         
         # Load the current level into the 3D engine
-        load_level_to_3d(game)
+        load_level_to_3d(self)
         
         # Set initial camera position based on player
-        if hasattr(game, 'player') and hasattr(game.player, 'rect'):
+        if hasattr(self, 'player') and hasattr(self.player, 'rect'):
             # Convert player position to 3D coordinates
-            player_x = game.player.rect.centerx / game.map_tile_size
-            player_z = game.player.rect.centery / game.map_tile_size
+            player_x = self.player.rect.centerx / self.map_tile_size
+            player_z = self.player.rect.centery / self.map_tile_size
             
             # Set initial camera position and angle
-            game.engine_3d.camera_pos = [player_x, 1.0, player_z]
+            self.engine_3d.camera_pos = [player_x, 1.0, player_z]
             
             # Set angle based on player direction
-            if hasattr(game.player, 'last_direction'):
-                game.fp_angle = {
+            if hasattr(self.player, 'last_direction'):
+                self.fp_angle = {
                     'up': 0,
                     'right': 90,
                     'down': 180,
                     'left': 270
-                }.get(game.player.last_direction, 0)
+                }.get(self.player.last_direction, 0)
                 
-                game.engine_3d.camera_angle = game.fp_angle
+                self.engine_3d.camera_angle = self.fp_angle
         
         return True
     else:
         # Switch back to previous state
         print("Switching back to 2D view")
-        game.game_state = game.previous_state if hasattr(game, 'previous_state') else GameState.OVERWORLD
+        self.game_state = self.previous_state if hasattr(self, 'previous_state') else GameState.OVERWORLD
         
         # Update player position based on 3D camera position
-        if hasattr(game, 'engine_3d') and hasattr(game, 'player') and hasattr(game.player, 'rect'):
+        if hasattr(self, 'engine_3d') and hasattr(self, 'player') and hasattr(self.player, 'rect'):
             # Convert 3D coordinates back to player position
-            game.player.rect.centerx = int(game.engine_3d.camera_pos[0] * game.map_tile_size)
-            game.player.rect.centery = int(game.engine_3d.camera_pos[2] * game.map_tile_size)
+            self.player.rect.centerx = int(self.engine_3d.camera_pos[0] * self.map_tile_size)
+            self.player.rect.centery = int(self.engine_3d.camera_pos[2] * self.map_tile_size)
             
             # Set player direction based on camera angle
-            angle = game.engine_3d.camera_angle % 360
+            angle = self.engine_3d.camera_angle % 360
             if 45 <= angle < 135:
-                game.player.last_direction = 'right'
+                self.player.last_direction = 'right'
             elif 135 <= angle < 225:
-                game.player.last_direction = 'down'
+                self.player.last_direction = 'down'
             elif 225 <= angle < 315:
-                game.player.last_direction = 'left'
+                self.player.last_direction = 'left'
             else:
-                game.player.last_direction = 'up'
+                self.player.last_direction = 'up'
         
         return True
 
-def load_level_to_3d(game):
+def load_level_to_3d(self):
     """Load the current game level into the 3D engine"""
-    if not hasattr(game, 'engine_3d') or not hasattr(game, 'current_level'):
+    if not hasattr(self, 'engine_3d') or not hasattr(self, 'current_level'):
         return False
     
     # Check if we have a layout for the current level
-    if "layout" in game.current_level and game.current_level["layout"]:
+    if "layout" in self.current_level and self.current_level["layout"]:
         # Pass the level layout to the 3D engine
-        game.engine_3d.load_level(game.current_level["layout"])
+        self.engine_3d.load_level(self.current_level["layout"])
         
         # Store the tile size for position conversions
-        game.map_tile_size = getattr(game, 'map_tile_size', 32)
+        self.map_tile_size = getattr(self, 'map_tile_size', 32)
         
         # Add NPCs as sprites
-        add_npcs_to_3d(game)
+        add_npcs_to_3d(self)
         
         return True
     else:
         print("Error: No layout available for current level")
         return False
 
-def add_npcs_to_3d(game):
+def add_npcs_to_3d(self):
     """Add game NPCs as sprites in the 3D engine"""
-    if not hasattr(game, 'engine_3d') or not hasattr(game, 'npcs'):
+    if not hasattr(self, 'engine_3d') or not hasattr(self, 'npcs'):
         return
     
     # Clear existing sprites
-    game.engine_3d.sprites = []
+    self.engine_3d.sprites = []
     
     # Add each NPC as a sprite
-    for npc in game.npcs:
+    for npc in self.npcs:
         if hasattr(npc, 'rect'):
             # Convert position to 3D coordinates
-            x = npc.rect.centerx / game.map_tile_size
-            z = npc.rect.centery / game.map_tile_size
+            x = npc.rect.centerx / self.map_tile_size
+            z = npc.rect.centery / self.map_tile_size
             
             # Create sprite ID from NPC name
             sprite_id = f"npc_{npc.name.lower().replace(' ', '_')}"
             
             # Add the sprite
-            game.engine_3d.add_sprite('npc', sprite_id, [x, 0.0, z], 1.0)
+            self.engine_3d.add_sprite('npc', sprite_id, [x, 0.0, z], 1.0)
             print(f"Added NPC sprite: {npc.name} at ({x}, {z})")
 
-def update_3d_view(game, dt):
+def update_3d_view(self, dt):
     """Update the 3D view state"""
-    if game.game_state != GameState.FIRST_PERSON_3D or not hasattr(game, 'engine_3d'):
+    if self.game_state != 12 or not hasattr(self, 'engine_3d'):
         return
     
     # Update the 3D engine
-    game.engine_3d.update(
-        game.fp_forward,
-        game.fp_backward,
-        game.fp_strafe_left,
-        game.fp_strafe_right,
-        game.fp_turn_left,
-        game.fp_turn_right
+    self.engine_3d.update(
+        self.fp_forward,
+        self.fp_backward,
+        self.fp_strafe_left,
+        self.fp_strafe_right,
+        self.fp_turn_left,
+        self.fp_turn_right
     )
     
     # Update NPC sprites if they moved
-    if hasattr(game, 'npcs'):
-        for i, npc in enumerate(game.npcs):
-            if hasattr(npc, 'rect') and i < len(game.engine_3d.sprites):
+    if hasattr(self, 'npcs'):
+        for i, npc in enumerate(self.npcs):
+            if hasattr(npc, 'rect') and i < len(self.engine_3d.sprites):
                 # Convert position to 3D coordinates
-                x = npc.rect.centerx / game.map_tile_size
-                z = npc.rect.centery / game.map_tile_size
+                x = npc.rect.centerx / self.map_tile_size
+                z = npc.rect.centery / self.map_tile_size
                 
                 # Update sprite position
-                game.engine_3d.sprites[i]['position'] = [x, 0.0, z]
+                self.engine_3d.sprites[i]['position'] = [x, 0.0, z]
 
-def draw_3d_view(game):
+def draw_3d_view(self):
     """Draw the 3D view"""
-    if game.game_state != GameState.FIRST_PERSON_3D or not hasattr(game, 'engine_3d'):
+    if self.game_state != 12 or not hasattr(self, 'engine_3d'):
         return
     
     # Render the 3D scene
     def draw_hud(surface):
         # Draw UI elements on the HUD surface
-        if hasattr(game, 'draw_ui'):
-            game.draw_ui(surface)
+        if hasattr(self, 'draw_ui'):
+            self.draw_ui(surface)
         
         # Draw dialogue box if active
-        if hasattr(game, 'dialogue_manager') and game.dialogue_manager.is_dialogue_active():
-            game.dialogue_manager.draw(surface)
+        if hasattr(self, 'dialogue_manager') and self.dialogue_manager.is_dialogue_active():
+            self.dialogue_manager.draw(surface)
         
         # Draw other UI elements as needed
         # Add any game-specific HUD elements here
     
     # Render the scene with HUD overlay
-    game.engine_3d.render(draw_hud)
+    self.engine_3d.render(draw_hud)

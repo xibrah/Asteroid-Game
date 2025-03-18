@@ -346,7 +346,7 @@ class OpenGL3DEngine:
         """Render a single wall cell"""
         # Wall texture
         wall_tex = self.textures.get(cell_type)
-        
+    
         # Enable texturing if we have a texture for this wall type
         if wall_tex:
             glEnable(GL_TEXTURE_2D)
@@ -362,79 +362,79 @@ class OpenGL3DEngine:
                     'F': (0.3, 0.3, 0.3)   # Dark gray for floor
                 }[cell_type]
             glColor3f(*color)
-        
+    
         # For each side of the cell, check if we need to render a wall
         # We only render walls if the adjacent cell is not a wall
-        
+    
         # Check north side (negative Z)
-        if z == 0 or self.level_map[z-1][x] != cell_type:
+        if z == 0 or (z > 0 and x < len(self.level_map[z-1]) and self.level_map[z-1][x] != cell_type):
             glBegin(GL_QUADS)
             # Top-left, bottom-left, bottom-right, top-right
             glNormal3f(0, 0, -1)  # Normal pointing south
-            
+        
             glTexCoord2f(0, 0)
             glVertex3f(x, self.wall_height, z)
-            
+        
             glTexCoord2f(0, 1)
             glVertex3f(x, 0, z)
-            
+        
             glTexCoord2f(1, 1)
             glVertex3f(x+1, 0, z)
-            
+        
             glTexCoord2f(1, 0)
             glVertex3f(x+1, self.wall_height, z)
             glEnd()
-        
+    
         # Check south side (positive Z)
-        if z == len(self.level_map)-1 or self.level_map[z+1][x] != cell_type:
+        if z == len(self.level_map)-1 or (z+1 < len(self.level_map) and x < len(self.level_map[z+1]) and self.level_map[z+1][x] != cell_type):
             glBegin(GL_QUADS)
             glNormal3f(0, 0, 1)  # Normal pointing north
-            
+        
             glTexCoord2f(0, 0)
             glVertex3f(x+1, self.wall_height, z+1)
-            
+        
             glTexCoord2f(0, 1)
             glVertex3f(x+1, 0, z+1)
-            
+        
             glTexCoord2f(1, 1)
             glVertex3f(x, 0, z+1)
-            
+        
             glTexCoord2f(1, 0)
             glVertex3f(x, self.wall_height, z+1)
             glEnd()
-        
+    
         # Check west side (negative X)
-        if x == 0 or self.level_map[z][x-1] != cell_type:
+        if x == 0 or (x > 0 and self.level_map[z][x-1] != cell_type):
             glBegin(GL_QUADS)
             glNormal3f(-1, 0, 0)  # Normal pointing east
-            
+        
             glTexCoord2f(0, 0)
             glVertex3f(x, self.wall_height, z+1)
-            
+        
             glTexCoord2f(0, 1)
             glVertex3f(x, 0, z+1)
-            
+        
             glTexCoord2f(1, 1)
             glVertex3f(x, 0, z)
-            
+        
             glTexCoord2f(1, 0)
             glVertex3f(x, self.wall_height, z)
             glEnd()
-        
+    
         # Check east side (positive X)
-        if x == len(self.level_map[0])-1 or self.level_map[z][x+1] != cell_type:
+        if x == len(self.level_map[z])-1 or (x+1 < len(self.level_map[z]) and self.level_map[z][x+1] != cell_type):
             glBegin(GL_QUADS)
             glNormal3f(1, 0, 0)  # Normal pointing west
-            
+        
             glTexCoord2f(0, 0)
             glVertex3f(x+1, self.wall_height, z)
-            
+        
             glTexCoord2f(0, 1)
             glVertex3f(x+1, 0, z)
-            
+        
             glTexCoord2f(1, 1)
             glVertex3f(x+1, 0, z+1)
-            
+        
             glTexCoord2f(1, 0)
             glVertex3f(x+1, self.wall_height, z+1)
             glEnd()

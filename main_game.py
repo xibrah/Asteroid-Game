@@ -21,7 +21,7 @@ from camera import Camera
 from save_system import SaveSystem, SaveLoadMenu
 from merchant_system import MerchantSystem
 from pygame.locals import * # For OpenGL constants
-from opengl_integration import (GameState, initialize_3d, toggle_3d_view, 
+from opengl_integration import (initialize_3d, toggle_3d_view, 
                              update_3d_view, draw_3d_view)
 # Initialize Pygame
 pygame.init()
@@ -81,6 +81,8 @@ class SpaceMap:
 
 class AsteroidFrontier:
     def __init__(self):
+        self.screen_width = SCREEN_WIDTH
+        self.screen_height = SCREEN_HEIGHT
         self.game_state = GameState.MAIN_MENU
         self.player = PlayerCharacter("New_Droid", x=SCREEN_WIDTH // 2, y=SCREEN_HEIGHT // 2)
         
@@ -149,8 +151,8 @@ class AsteroidFrontier:
         self.collected_resources = {}
 
         # Add first-person view flag and raycaster
-        self.first_person_view = False
-        self.raycaster = Raycaster(SCREEN_WIDTH, SCREEN_HEIGHT)
+        #self.first_person_view = False
+        #self.raycaster = Raycaster(SCREEN_WIDTH, SCREEN_HEIGHT)
         
         # Add first-person controls
         self.fp_forward = False
@@ -165,7 +167,7 @@ class AsteroidFrontier:
         print("Initializing game systems...")
     
         # Initialize OpenGL engine when game starts
-        initialize_3d(game)
+        initialize_3d(self)
         
         # Initialize space travel system
         if not hasattr(self, 'space_travel') or self.space_travel is None:
@@ -1289,103 +1291,96 @@ class AsteroidFrontier:
         # 3D mode drawing at the beginning
         if self.game_state == GameState.FIRST_PERSON_3D:
             draw_3d_view(self)
-            return
-        
-        screen.fill(SPACE_BG)
+        else:
+            # Make sure this else branch runs for all other game states
+            # Regular 2D drawing
+            screen.fill(SPACE_BG)
 
-         # Draw space travel
-        if self.game_state == GameState.SPACE_TRAVEL:
-             # Draw space travel system
-            self.space_travel.draw(screen)
+            if self.game_state == GameState.MAIN_MENU:
+                self.draw_main_menu()
+            elif self.game_state == GameState.SPACE_TRAVEL:
+                self.space_travel.draw(screen)
+            elif self.game_state == GameState.MERCHANT:
+                self.draw_merchant(screen)
+            
+            
+            # Draw Overworld            
+            elif self.game_state in [GameState.OVERWORLD, GameState.DIALOGUE, GameState.TRAVEL_MENU]:
+                # Draw level with camera offset 3/4/25
+                self.camera.update(self.player)
         
-            # Draw weapon visual effects 
-            self.draw_weapon_visual(screen)
+                if self.current_level and "all_sprites" in self.current_level:
+                    for sprite in self.current_level["all_sprites"]:
+                        # Calculate position with camera offset
+                        cam_pos = self.camera.apply(sprite)
+                        screen.blit(sprite.image, cam_pos)
         
-        elif self.game_state == GameState.MERCHANT:
+                # Draw NPCs with camera offset
+                for npc in self.npcs:
+                    cam_pos = self.camera.apply(npc)
+                    screen.blit(npc.image, cam_pos)
+        
+                # Draw player with camera offset
+                cam_pos = self.camera.apply(self.player)
+                screen.blit(self.player.image, cam_pos)
+        
+                # Draw dialogue if active
+                if self.dialogue_manager.is_dialogue_active():
+                    self.dialogue_manager.draw(screen)
+        
+                # Draw UI elements if not in dialogue
+                if self.game_state != GameState.DIALOGUE:
+                    self.draw_ui()
+        
+                # Draw the menu if any menu view is active
+                if self.show_inventory or self.show_map or self.show_quest_log:
+                    self.draw_menu_screen()
+        
+                # Draw travel menu if in that state
+                if self.game_state == GameState.TRAVEL_MENU:
+                    self.draw_travel_menu()
+    
+            # Draw save/load menus over everything else
+            elif self.game_state in [GameState.SAVE_MENU, GameState.LOAD_MENU]:
+                # First draw the game underneath
+                if self.current_level and "all_sprites" in self.current_level:
+                    for sprite in self.current_level["all_sprites"]:
+                        cam_pos = self.camera.apply(sprite)
+                        screen.blit(sprite.image, cam_pos)
+        
+                    # Draw NPCs
+                    for npc in self.npcs:
+                        cam_pos = self.camera.apply(npc)
+                        screen.blit(npc.image, cam_pos)
+        
+                    # Draw player
+                    cam_pos = self.camera.apply(self.player)
+                    screen.blit(self.player.image, cam_pos)
+    
+                # Then draw the menu overlay
+                if hasattr(self, 'save_load_menu'):
+                    self.save_load_menu.draw(screen, self)
+        
             # Draw merchant interface
-            self.draw_merchant(screen)
-
-        # Draw Main Menu
-        elif self.game_state == GameState.MAIN_MENU:
-            self.draw_main_menu()
+            elif self.game_state == GameState.MERCHANT:
+                # First draw the game underneath
+                if self.current_level and "all_sprites" in self.current_level:
+                    for sprite in self.current_level["all_sprites"]:
+                        cam_pos = self.camera.apply(sprite)
+                        screen.blit(sprite.image, cam_pos)
             
-        # Draw Overworld            
-        elif self.game_state in [GameState.OVERWORLD, GameState.DIALOGUE, GameState.TRAVEL_MENU]:
-            # Draw level with camera offset 3/4/25
-            self.camera.update(self.player)
-        
-            if self.current_level and "all_sprites" in self.current_level:
-                for sprite in self.current_level["all_sprites"]:
-                    # Calculate position with camera offset
-                    cam_pos = self.camera.apply(sprite)
-                    screen.blit(sprite.image, cam_pos)
-        
-            # Draw NPCs with camera offset
-            for npc in self.npcs:
-                cam_pos = self.camera.apply(npc)
-                screen.blit(npc.image, cam_pos)
-        
-            # Draw player with camera offset
-            cam_pos = self.camera.apply(self.player)
-            screen.blit(self.player.image, cam_pos)
-        
-            # Draw dialogue if active
-            if self.dialogue_manager.is_dialogue_active():
-                self.dialogue_manager.draw(screen)
-        
-            # Draw UI elements if not in dialogue
-            if self.game_state != GameState.DIALOGUE:
-                self.draw_ui()
-        
-            # Draw the menu if any menu view is active
-            if self.show_inventory or self.show_map or self.show_quest_log:
-                self.draw_menu_screen()
-        
-            # Draw travel menu if in that state
-            if self.game_state == GameState.TRAVEL_MENU:
-                self.draw_travel_menu()
-    
-        # Draw save/load menus over everything else
-        elif self.game_state in [GameState.SAVE_MENU, GameState.LOAD_MENU]:
-            # First draw the game underneath
-            if self.current_level and "all_sprites" in self.current_level:
-                for sprite in self.current_level["all_sprites"]:
-                    cam_pos = self.camera.apply(sprite)
-                    screen.blit(sprite.image, cam_pos)
-        
-                # Draw NPCs
-                for npc in self.npcs:
-                    cam_pos = self.camera.apply(npc)
-                    screen.blit(npc.image, cam_pos)
-        
-                # Draw player
-                cam_pos = self.camera.apply(self.player)
-                screen.blit(self.player.image, cam_pos)
-    
-            # Then draw the menu overlay
-            if hasattr(self, 'save_load_menu'):
-                self.save_load_menu.draw(screen, self)
-        
-        # Draw merchant interface
-        elif self.game_state == GameState.MERCHANT:
-            # First draw the game underneath
-            if self.current_level and "all_sprites" in self.current_level:
-                for sprite in self.current_level["all_sprites"]:
-                    cam_pos = self.camera.apply(sprite)
-                    screen.blit(sprite.image, cam_pos)
+                    # Draw NPCs
+                    for npc in self.npcs:
+                        cam_pos = self.camera.apply(npc)
+                        screen.blit(npc.image, cam_pos)
             
-                # Draw NPCs
-                for npc in self.npcs:
-                    cam_pos = self.camera.apply(npc)
-                    screen.blit(npc.image, cam_pos)
-            
-                # Draw player
-                cam_pos = self.camera.apply(self.player)
-                screen.blit(self.player.image, cam_pos)
+                    # Draw player
+                    cam_pos = self.camera.apply(self.player)
+                    screen.blit(self.player.image, cam_pos)
         
-            # Then draw the merchant interface
-            if hasattr(self, 'merchant_system'):
-                self.merchant_system.draw(screen, self)
+                # Then draw the merchant interface
+                if hasattr(self, 'merchant_system'):
+                    self.merchant_system.draw(screen, self)
 
         pygame.display.flip()
     
@@ -1415,8 +1410,9 @@ class AsteroidFrontier:
         screen.blit(start, start_rect)
         screen.blit(quit_text, quit_rect)
     
-    def draw_ui(self):
+    def draw_ui(self, surface=None):
         """Draw UI elements with ship-specific prompts, 3/8/25"""
+        target = surface if surface is not None else screen
         font = pygame.font.Font(None, 24)
     
         # Health bar
