@@ -20,7 +20,9 @@ from space_travel import SpaceTravel, AsteroidField
 from camera import Camera
 from save_system import SaveSystem, SaveLoadMenu
 from merchant_system import MerchantSystem
-
+from pygame.locals import * # For OpenGL constants
+from opengl_integration import (GameState, initialize_3d, toggle_3d_view, 
+                             update_3d_view, draw_3d_view)
 # Initialize Pygame
 pygame.init()
 
@@ -38,7 +40,7 @@ BLUE = (0, 0, 255)
 SPACE_BG = (5, 5, 20)
 
 # Set up the display
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), DOUBLEBUF|OPENGL)
 pygame.display.set_caption("Asteroid Frontier")
 clock = pygame.time.Clock()
 
@@ -143,13 +145,28 @@ class AsteroidFrontier:
         self.camera_pos = (0, 0)
         self.near_location = None
 
-         # Initialize resource tracking
+        # Initialize resource tracking
         self.collected_resources = {}
+
+        # Add first-person view flag and raycaster
+        self.first_person_view = False
+        self.raycaster = Raycaster(SCREEN_WIDTH, SCREEN_HEIGHT)
+        
+        # Add first-person controls
+        self.fp_forward = False
+        self.fp_backward = False
+        self.fp_strafe_left = False
+        self.fp_strafe_right = False
+        self.fp_turn_left = False
+        self.fp_turn_right = False
    
     def initialize_systems(self):
         """Initialize all game systems, 3/11/25"""
         print("Initializing game systems...")
     
+        # Initialize OpenGL engine when game starts
+        initialize_3d(game)
+        
         # Initialize space travel system
         if not hasattr(self, 'space_travel') or self.space_travel is None:
             from space_travel import SpaceTravel
@@ -818,6 +835,40 @@ class AsteroidFrontier:
             # Regular event handling for game when menu is not open
             if not menu_open:
                         
+                # Add 3D view toggle with V key
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_v:
+                    toggle_3d_view(self)
+
+                # Add 3D control handling
+                if self.game_state == GameState.FIRST_PERSON_3D:
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_w:
+                            self.fp_forward = True
+                        elif event.key == pygame.K_s:
+                            self.fp_backward = True
+                        elif event.key == pygame.K_a:
+                            self.fp_strafe_left = True
+                        elif event.key == pygame.K_d:
+                            self.fp_strafe_right = True
+                        elif event.key == pygame.K_LEFT:
+                            self.fp_turn_left = True
+                        elif event.key == pygame.K_RIGHT:
+                            self.fp_turn_right = True
+    
+                    elif event.type == pygame.KEYUP:
+                        if event.key == pygame.K_w:
+                            self.fp_forward = False
+                        elif event.key == pygame.K_s:
+                            self.fp_backward = False
+                        elif event.key == pygame.K_a:
+                            self.fp_strafe_left = False
+                        elif event.key == pygame.K_d:
+                            self.fp_strafe_right = False
+                        elif event.key == pygame.K_LEFT:
+                            self.fp_turn_left = False
+                        elif event.key == pygame.K_RIGHT:
+                            self.fp_turn_right = False
+                
                 # Handle merchant events if in merchant mode
                 if self.game_state == GameState.MERCHANT:
                     if self.handle_merchant_events(event):
@@ -954,6 +1005,11 @@ class AsteroidFrontier:
     
     def update(self, dt):
         """Update game state with ship interactions, 3/11/25"""
+        # 3D mode update call at the beginning
+        if self.game_state == GameState.FIRST_PERSON_3D:
+            update_3d_view(self, dt)
+            return
+        
         if self.game_state == GameState.OVERWORLD:
             # Update player (only if menu is not open)
             keys = pygame.key.get_pressed()
@@ -1021,7 +1077,7 @@ class AsteroidFrontier:
                         self.dialogue_manager.start_dialogue(npc, self.player)
                         self.game_state = GameState.DIALOGUE
                         break
-    
+
         elif self.game_state == GameState.DIALOGUE:
             # Check if dialogue has ended
             if not self.dialogue_manager.is_dialogue_active():
@@ -1230,6 +1286,11 @@ class AsteroidFrontier:
         
     def draw(self):
         """Render the game, Overmenu 3/16/25"""
+        # 3D mode drawing at the beginning
+        if self.game_state == GameState.FIRST_PERSON_3D:
+            draw_3d_view(self)
+            return
+        
         screen.fill(SPACE_BG)
 
          # Draw space travel
@@ -1247,7 +1308,7 @@ class AsteroidFrontier:
         # Draw Main Menu
         elif self.game_state == GameState.MAIN_MENU:
             self.draw_main_menu()
-    
+            
         # Draw Overworld            
         elif self.game_state in [GameState.OVERWORLD, GameState.DIALOGUE, GameState.TRAVEL_MENU]:
             # Draw level with camera offset 3/4/25

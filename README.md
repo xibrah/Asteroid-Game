@@ -1,8 +1,9 @@
 This is a great start for an Asteroid Frontier RPG game!
 
 Note:
-Requires Pygame, install with: pip intall pygame
-
+Requires Pygame, install with: pip install pygame
+							&: pip install pygame pyopengl
+							&: pip install numpy
 ## Game Structure
 
 The code is organized into several interconnected systems:

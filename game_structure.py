@@ -60,6 +60,7 @@ class GameState:
     SAVE_MENU = 9
     LOAD_MENU = 10
     MERCHANT = 11
+    FIRST_PERSON_3D = 12
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
