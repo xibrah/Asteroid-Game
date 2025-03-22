@@ -22,6 +22,7 @@ from save_system import SaveSystem, SaveLoadMenu
 from merchant_system import MerchantSystem
 from pygame.locals import * # For OpenGL constants
 from OpenGL.GL import *  # This imports all OpenGL functions
+from OpenGL.GLU import *
 from opengl_integration import (initialize_3d, toggle_3d_view, 
                              update_3d_view, draw_3d_view)
 # Initialize Pygame
@@ -56,31 +57,31 @@ os.makedirs('assets/items', exist_ok=True)
 os.makedirs('assets/icons', exist_ok=True)
 os.makedirs('saves', exist_ok=True)
 
-class SpaceMap:
-    """simple debug version 3/4/25"""
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.locations = {}  # Dictionary of locations {id: Location}
+# class SpaceMap:
+#     """simple debug version 3/4/25"""
+#     def __init__(self, width, height):
+#         self.width = width
+#         self.height = height
+#         self.locations = {}  # Dictionary of locations {id: Location}
         
-        # No need for the complex background generation yet
-        self.background = pygame.Surface((width, height))
-        self.background.fill((5, 5, 20))  # Simple dark background
+#         # No need for the complex background generation yet
+#         self.background = pygame.Surface((width, height))
+#         self.background.fill((5, 5, 20))  # Simple dark background
         
-        # Simple star field
-        for _ in range(1000):
-            x = random.randint(0, width)
-            y = random.randint(0, height)
-            brightness = random.randint(50, 255)
-            size = 1 if brightness < 200 else 2
-            pygame.draw.circle(self.background, 
-                             (brightness, brightness, brightness), 
-                             (x, y), size)
+#         # Simple star field
+#         for _ in range(1000):
+#             x = random.randint(0, width)
+#             y = random.randint(0, height)
+#             brightness = random.randint(50, 255)
+#             size = 1 if brightness < 200 else 2
+#             pygame.draw.circle(self.background, 
+#                              (brightness, brightness, brightness), 
+#                              (x, y), size)
     
-    def add_location(self, location_id, location_data):
-        """Add a location to the space map"""
-        self.locations[location_id] = location_data
-        print(f"Added location: {location_id} at {location_data['position']}")
+#     def add_location(self, location_id, location_data):
+#         """Add a location to the space map"""
+#         self.locations[location_id] = location_data
+#         print(f"Added location: {location_id} at {location_data['position']}")
 
 class AsteroidFrontier:
     def __init__(self):
@@ -92,6 +93,9 @@ class AsteroidFrontier:
         # Set a flag to track if we're using OpenGL or regular pygame
         self.using_opengl = True
         
+        # Set up display for both 2D and 3D
+        pygame.display.set_mode((self.screen_width, self.screen_height), DOUBLEBUF|OPENGL)
+
         # Create a 2D surface for regular Pygame drawing
         self.pygame_surface = pygame.Surface((self.screen_width, self.screen_height))
         
@@ -171,21 +175,22 @@ class AsteroidFrontier:
         self.fp_turn_left = False
         self.fp_turn_right = False
    
-    def setup_basic_opengl(self):
-        """Set up basic OpenGL for 2D rendering"""
-        glViewport(0, 0, self.screen_width, self.screen_height)
+    def setup_2d_mode(self):
+        """Set up OpenGL for 2D rendering"""
+        # Reset projection and modelview matrices
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         glOrtho(0, self.screen_width, self.screen_height, 0, -1, 1)
+    
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
     
+        # Disable 3D features
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_LIGHTING)
         glEnable(GL_TEXTURE_2D)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glClearColor(0.0, 0.0, 0.0, 1.0)
-        glDisable(GL_DEPTH_TEST)
-        glDisable(GL_LIGHTING)
 
     def initialize_systems(self):
         """Initialize all game systems, 3/11/25"""
@@ -1322,7 +1327,7 @@ class AsteroidFrontier:
         
         else:
             # For 2D mode, always start fresh with a 2D setup
-            self.setup_basic_opengl()
+            self.setup_2d_mode()
         
             # Clear the pygame surface
             self.pygame_surface.fill(SPACE_BG)
@@ -1407,23 +1412,32 @@ class AsteroidFrontier:
                     self.save_load_menu.draw(screen, self)
         
             # Convert the surface to a texture and display it
-            self.blit_surface_to_screen()
+            self.render_surface_to_screen()
 
         # Proceed to Next Frame
         pygame.display.flip()
     
-    def blit_surface_to_screen(self):
-        """Simple method to draw the pygame surface as a texture"""
-        data = pygame.image.tostring(self.pygame_surface, 'RGBA')
+    def render_surface_to_screen(self):
+        """Render pygame surface as an OpenGL texture"""
+        # Get surface data
+        surface_data = pygame.image.tostring(self.pygame_surface, 'RGBA')
     
-        # Create texture
-        texture = glGenTextures(1)
-        glBindTexture(GL_TEXTURE_2D, texture)
+        # Create a new texture
+        texture_id = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+    
+        # Set texture parameters
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.screen_width, self.screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
     
-        # Draw a full-screen quad
+        # Upload texture data
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_RGBA, 
+            self.screen_width, self.screen_height, 
+            0, GL_RGBA, GL_UNSIGNED_BYTE, surface_data
+        )
+    
+        # Draw a screen-sized quad with our texture
         glBegin(GL_QUADS)
         glTexCoord2f(0, 0); glVertex2f(0, 0)
         glTexCoord2f(1, 0); glVertex2f(self.screen_width, 0)
@@ -1431,8 +1445,8 @@ class AsteroidFrontier:
         glTexCoord2f(0, 1); glVertex2f(0, self.screen_height)
         glEnd()
     
-        # Clean up the texture (important!)
-        glDeleteTextures(1, [texture])
+        # Clean up
+        glDeleteTextures(1, [texture_id])
 
     def draw_main_menu_to_surface(self, surface):
         """draw_main_menu code but drawing to the passed surface"""
