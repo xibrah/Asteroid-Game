@@ -21,6 +21,7 @@ from camera import Camera
 from save_system import SaveSystem, SaveLoadMenu
 from merchant_system import MerchantSystem
 from pygame.locals import * # For OpenGL constants
+from OpenGL.GL import *  # This imports all OpenGL functions
 from opengl_integration import (initialize_3d, toggle_3d_view, 
                              update_3d_view, draw_3d_view)
 # Initialize Pygame
@@ -41,6 +42,8 @@ SPACE_BG = (5, 5, 20)
 
 # Set up the display
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), DOUBLEBUF|OPENGL)
+# Create a 2D surface for regular Pygame drawing
+pygame_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Asteroid Frontier")
 clock = pygame.time.Clock()
 
@@ -85,6 +88,12 @@ class AsteroidFrontier:
         self.screen_height = SCREEN_HEIGHT
         self.game_state = GameState.MAIN_MENU
         self.player = PlayerCharacter("New_Droid", x=SCREEN_WIDTH // 2, y=SCREEN_HEIGHT // 2)
+        
+        # Set a flag to track if we're using OpenGL or regular pygame
+        self.using_opengl = True
+        
+        # Create a 2D surface for regular Pygame drawing
+        self.pygame_surface = pygame.Surface((self.screen_width, self.screen_height))
         
         # Create camera
         self.camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -162,6 +171,22 @@ class AsteroidFrontier:
         self.fp_turn_left = False
         self.fp_turn_right = False
    
+    def setup_basic_opengl(self):
+        """Set up basic OpenGL for 2D rendering"""
+        glViewport(0, 0, self.screen_width, self.screen_height)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glOrtho(0, self.screen_width, self.screen_height, 0, -1, 1)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+    
+        glEnable(GL_TEXTURE_2D)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glClearColor(0.0, 0.0, 0.0, 1.0)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_LIGHTING)
+
     def initialize_systems(self):
         """Initialize all game systems, 3/11/25"""
         print("Initializing game systems...")
@@ -1288,21 +1313,36 @@ class AsteroidFrontier:
         
     def draw(self):
         """Render the game, Overmenu 3/16/25"""
-        # 3D mode drawing at the beginning
+         # Always clear the screen at the beginning of each frame
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        
+        # 3D mode has its own drawing path
         if self.game_state == GameState.FIRST_PERSON_3D:
             draw_3d_view(self)
+        
         else:
-            # Make sure this else branch runs for all other game states
-            # Regular 2D drawing
-            screen.fill(SPACE_BG)
+            # For 2D mode, always start fresh with a 2D setup
+            self.setup_basic_opengl()
+        
+            # Clear the pygame surface
+            self.pygame_surface.fill(SPACE_BG)
+
+            # Render to the pygame surface based on game state
+            if self.game_state == GameState.MAIN_MENU:
+                self.draw_main_menu_to_surface(self.pygame_surface)
+            
+            elif self.game_state in [GameState.OVERWORLD, GameState.DIALOGUE, GameState.TRAVEL_MENU, GameState.MERCHANT]:
+            # Draw your overworld content to the surface
+                self.draw_overworld_to_surface(self.pygame_surface)
 
             if self.game_state == GameState.MAIN_MENU:
-                self.draw_main_menu()
-            elif self.game_state == GameState.SPACE_TRAVEL:
-                self.space_travel.draw(screen)
-            elif self.game_state == GameState.MERCHANT:
-                self.draw_merchant(screen)
+                self.draw_main_menu_to_surface(self.pygame_surface)
             
+            elif self.game_state == GameState.MERCHANT:
+                self.draw_merchant(self.pygame_surface)
+            
+            elif self.game_state == GameState.SPACE_TRAVEL:
+                self.space_travel.draw(self.pygame_surface)
             
             # Draw Overworld            
             elif self.game_state in [GameState.OVERWORLD, GameState.DIALOGUE, GameState.TRAVEL_MENU]:
@@ -1334,13 +1374,18 @@ class AsteroidFrontier:
         
                 # Draw the menu if any menu view is active
                 if self.show_inventory or self.show_map or self.show_quest_log:
-                    self.draw_menu_screen()
+                    self.draw_menu_screen_to_surface(self.pygame_surface)
         
                 # Draw travel menu if in that state
                 if self.game_state == GameState.TRAVEL_MENU:
                     self.draw_travel_menu()
-    
-            # Draw save/load menus over everything else
+                
+                # Draw merchant interface
+                if self.game_state == GameState.MERCHANT:
+                    # Then draw the merchant interface
+                    self.merchant_system.draw(screen, self)
+            
+                    # Draw save/load menus over everything else
             elif self.game_state in [GameState.SAVE_MENU, GameState.LOAD_MENU]:
                 # First draw the game underneath
                 if self.current_level and "all_sprites" in self.current_level:
@@ -1361,31 +1406,36 @@ class AsteroidFrontier:
                 if hasattr(self, 'save_load_menu'):
                     self.save_load_menu.draw(screen, self)
         
-            # Draw merchant interface
-            elif self.game_state == GameState.MERCHANT:
-                # First draw the game underneath
-                if self.current_level and "all_sprites" in self.current_level:
-                    for sprite in self.current_level["all_sprites"]:
-                        cam_pos = self.camera.apply(sprite)
-                        screen.blit(sprite.image, cam_pos)
-            
-                    # Draw NPCs
-                    for npc in self.npcs:
-                        cam_pos = self.camera.apply(npc)
-                        screen.blit(npc.image, cam_pos)
-            
-                    # Draw player
-                    cam_pos = self.camera.apply(self.player)
-                    screen.blit(self.player.image, cam_pos)
-        
-                # Then draw the merchant interface
-                if hasattr(self, 'merchant_system'):
-                    self.merchant_system.draw(screen, self)
+            # Convert the surface to a texture and display it
+            self.blit_surface_to_screen()
 
+        # Proceed to Next Frame
         pygame.display.flip()
     
-    def draw_main_menu(self):
-        """Draw the main menu"""
+    def blit_surface_to_screen(self):
+        """Simple method to draw the pygame surface as a texture"""
+        data = pygame.image.tostring(self.pygame_surface, 'RGBA')
+    
+        # Create texture
+        texture = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, texture)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.screen_width, self.screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
+    
+        # Draw a full-screen quad
+        glBegin(GL_QUADS)
+        glTexCoord2f(0, 0); glVertex2f(0, 0)
+        glTexCoord2f(1, 0); glVertex2f(self.screen_width, 0)
+        glTexCoord2f(1, 1); glVertex2f(self.screen_width, self.screen_height)
+        glTexCoord2f(0, 1); glVertex2f(0, self.screen_height)
+        glEnd()
+    
+        # Clean up the texture (important!)
+        glDeleteTextures(1, [texture])
+
+    def draw_main_menu_to_surface(self, surface):
+        """draw_main_menu code but drawing to the passed surface"""
         title_font = pygame.font.Font(None, 64)
         option_font = pygame.font.Font(None, 32)
         
@@ -1404,11 +1454,11 @@ class AsteroidFrontier:
             y = random.randint(0, SCREEN_HEIGHT)
             size = random.randint(1, 3)
             brightness = random.randint(50, 255)
-            pygame.draw.circle(screen, (brightness, brightness, brightness), (x, y), size)
+            pygame.draw.circle(surface, (brightness, brightness, brightness), (x, y), size)
         
-        screen.blit(title, title_rect)
-        screen.blit(start, start_rect)
-        screen.blit(quit_text, quit_rect)
+        surface.blit(title, title_rect)
+        surface.blit(start, start_rect)
+        surface.blit(quit_text, quit_rect)
     
     def draw_ui(self, surface=None):
         """Draw UI elements with ship-specific prompts, 3/8/25"""
@@ -1417,11 +1467,11 @@ class AsteroidFrontier:
     
         # Health bar
         health_text = font.render(f"Health: {self.player.health}/{self.player.max_health}", True, WHITE)
-        screen.blit(health_text, (10, 10))
+        target.blit(health_text, (10, 10))
     
         # Credits
         money_text = font.render(f"Credits: {self.player.credits}", True, WHITE)
-        screen.blit(money_text, (10, 40))
+        target.blit(money_text, (10, 40))
     
         # Current location
         location_name = self.current_level['name'].replace("_", " ").title() if self.current_level else "Unknown"
@@ -1436,16 +1486,16 @@ class AsteroidFrontier:
             location_name = f"Ship Cabin (Docked at {docked_at})"
     
         location_text = font.render(f"Location: {location_name}", True, WHITE)
-        screen.blit(location_text, (SCREEN_WIDTH - location_text.get_width() - 10, 10))
+        target.blit(location_text, (SCREEN_WIDTH - location_text.get_width() - 10, 10))
     
         # Repair prompt for EVA
         if hasattr(self, 'near_repair') and self.near_repair and hasattr(self, 'current_repair_point'):
             repair_type = self.current_repair_point.repair_type.title()
             repair_text = font.render(f"Press E to repair {repair_type} System", True, (0, 255, 0))
-            screen.blit(repair_text, (SCREEN_WIDTH//2 - repair_text.get_width()//2, SCREEN_HEIGHT - 90))
+            target.blit(repair_text, (SCREEN_WIDTH//2 - repair_text.get_width()//2, SCREEN_HEIGHT - 90))
         
             hint_text = font.render("(ESC to return to ship)", True, (200, 200, 200))
-            screen.blit(hint_text, (SCREEN_WIDTH//2 - hint_text.get_width()//2, SCREEN_HEIGHT - 60))
+            target.blit(hint_text, (SCREEN_WIDTH//2 - hint_text.get_width()//2, SCREEN_HEIGHT - 60))
         
         # Exit hint - only show if player is near an exit
         if self.near_exit:
@@ -1459,7 +1509,7 @@ class AsteroidFrontier:
                 exit_text = font.render("Press E to travel to a new location", True, (0, 255, 0))
             
             if exit_text:
-                screen.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 60))
+                target.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 60))
     
         # Helm interaction prompt
         if hasattr(self, 'near_helm') and self.near_helm:
@@ -1470,13 +1520,13 @@ class AsteroidFrontier:
                 helm_text = font.render("Press E to return to space flight", True, (0, 255, 255))
             
             if helm_text:
-                screen.blit(helm_text, (SCREEN_WIDTH//2 - helm_text.get_width()//2, SCREEN_HEIGHT - 90))
+                target.blit(helm_text, (SCREEN_WIDTH//2 - helm_text.get_width()//2, SCREEN_HEIGHT - 90))
     
         # Controls hint
         controls = font.render("Q: Menu | E: Interact | T: Trade", True, WHITE)
-        screen.blit(controls, (SCREEN_WIDTH//2 - controls.get_width()//2, SCREEN_HEIGHT - 30))
+        target.blit(controls, (SCREEN_WIDTH//2 - controls.get_width()//2, SCREEN_HEIGHT - 30))
     
-    def draw_menu_screen(self):
+    def draw_menu_screen(self, surface):
         """Draw the unified tabbed menu screen, 3/16/25"""
         # Create the main panel
         panel_rect = pygame.Rect(50, 50, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100)
@@ -1505,7 +1555,7 @@ class AsteroidFrontier:
             # Tab text
             tab_font = pygame.font.Font(None, 28)
             tab_text = tab_font.render(tab_name, True, WHITE)
-            screen.blit(tab_text, (tab_rect.centerx - tab_text.get_width()//2, 
+            surface.blit(tab_text, (tab_rect.centerx - tab_text.get_width()//2, 
                                  tab_rect.centery - tab_text.get_height()//2))
     
         # Draw content area
@@ -1525,9 +1575,9 @@ class AsteroidFrontier:
         # Draw navigation instructions
         nav_font = pygame.font.Font(None, 24)
         nav_text = nav_font.render("Tab/1-4: Switch Tabs | Q: Close Menu", True, (150, 150, 150))
-        screen.blit(nav_text, (panel_rect.centerx - nav_text.get_width()//2, panel_rect.bottom - 30))
+        surface.blit(nav_text, (panel_rect.centerx - nav_text.get_width()//2, panel_rect.bottom - 30))
         
-    def draw_items_tab(self, content_rect):
+    def draw_items_tab_to_surface(self, surface, content_rect):
         """Draw the items inventory tab, 3/16/25"""
         # Existing inventory drawing code, adjusted to fit in content_rect
     
@@ -1536,17 +1586,17 @@ class AsteroidFrontier:
     
         # Calculate the dividing line position
         divider_y = content_rect.y + content_rect.height // 2
-        pygame.draw.line(screen, WHITE, (content_rect.x + 20, divider_y), 
+        pygame.draw.line(surface, WHITE, (content_rect.x + 20, divider_y), 
                     (content_rect.right - 20, divider_y), 2)
     
         # === PLAYER INVENTORY SECTION ===
         player_section = section_font.render("Personal Items", True, (200, 200, 255))
-        screen.blit(player_section, (content_rect.x + 20, content_rect.y + 50))
+        surface.blit(player_section, (content_rect.x + 20, content_rect.y + 50))
     
         # Show credits
         if hasattr(self.player, 'credits'):
             credits_text = item_font.render(f"Credits: {self.player.credits}", True, (255, 255, 0))
-            screen.blit(credits_text, (content_rect.right - credits_text.get_width() - 20, content_rect.y + 50))
+            surface.blit(credits_text, (content_rect.right - credits_text.get_width() - 20, content_rect.y + 50))
     
         # Check if player has inventory attribute
         if hasattr(self.player, 'inventory') and hasattr(self.player.inventory, 'items'):
@@ -1561,7 +1611,7 @@ class AsteroidFrontier:
                     # Skip if too many items to display
                     if i >= 8:  # Limit items per section
                         more_text = item_font.render(f"... and {len(player_items) - 8} more items", True, WHITE)
-                        screen.blit(more_text, (content_rect.x + 20, y_offset))
+                        surface.blit(more_text, (content_rect.x + 20, y_offset))
                         break
                 
                     # Get item quantity
@@ -1573,22 +1623,22 @@ class AsteroidFrontier:
                     else:
                         item_text = item_font.render(f"{item.name}", True, WHITE)
                 
-                    screen.blit(item_text, (content_rect.x + 20, y_offset))
+                    surface.blit(item_text, (content_rect.x + 20, y_offset))
                 
                     # Add value if item has value
                     if hasattr(item, 'value') and item.value > 0:
                         value_text = item_font.render(f"{item.value} credits", True, (200, 200, 100))
-                        screen.blit(value_text, (content_rect.x + 300, y_offset))
+                        surface.blit(value_text, (content_rect.x + 300, y_offset))
                 
                     y_offset += 25
             else:
                 # No items
                 no_items_text = item_font.render("No personal items", True, WHITE)
-                screen.blit(no_items_text, (content_rect.x + 20, content_rect.y + 80))
+                surface.blit(no_items_text, (content_rect.x + 20, content_rect.y + 80))
     
         # === SHIP CARGO SECTION ===
         cargo_section = section_font.render("Ship Cargo", True, (200, 255, 200))
-        screen.blit(cargo_section, (content_rect.x + 20, divider_y + 20))
+        surface.blit(cargo_section, (content_rect.x + 20, divider_y + 20))
     
         # Get cargo capacity (access directly from space_travel.ship)
         cargo_capacity = 100  # Default
@@ -1606,7 +1656,7 @@ class AsteroidFrontier:
         # Show cargo capacity with usage
         capacity_text = item_font.render(f"Cargo: {current_cargo}/{cargo_capacity}", True, 
                                        (200, 200, 200) if current_cargo < cargo_capacity else (255, 100, 100))
-        screen.blit(capacity_text, (content_rect.right - capacity_text.get_width() - 20, divider_y + 20))
+        surface.blit(capacity_text, (content_rect.right - capacity_text.get_width() - 20, divider_y + 20))
     
         # Get from asteroid_field if it exists
         if hasattr(self, 'space_travel') and hasattr(self.space_travel, 'asteroid_field'):
@@ -1632,14 +1682,14 @@ class AsteroidFrontier:
                 # Skip if too many items to display
                 if i >= 8:  # Limit items per section
                     more_text = item_font.render(f"... and {len(ship_resources) - 8} more resources", True, WHITE)
-                    screen.blit(more_text, (content_rect.x + 20, y_offset))
+                    surface.blit(more_text, (content_rect.x + 20, y_offset))
                     break
             
                 # Format resource name for display
                 display_name = resource_name.replace('_', ' ').title()
             
                 resource_text = item_font.render(f"{display_name}: {amount}", True, WHITE)
-                screen.blit(resource_text, (content_rect.x + 20, y_offset))
+                surface.blit(resource_text, (content_rect.x + 20, y_offset))
             
                 # Add estimated value based on merchant system if available
                 if hasattr(self, 'merchant_system'):
@@ -1647,25 +1697,25 @@ class AsteroidFrontier:
                                                                   self.current_level.get("name", "psyche_township"))
                     total_value = base_value * amount
                     value_text = item_font.render(f"{total_value} credits", True, (200, 200, 100))
-                    screen.blit(value_text, (content_rect.x + 300, y_offset))
+                    surface.blit(value_text, (content_rect.x + 300, y_offset))
             
                 y_offset += 25
         else:
             no_cargo_text = item_font.render("Cargo hold empty", True, WHITE)
-            screen.blit(no_cargo_text, (content_rect.x + 20, divider_y + 50))
+            surface.blit(no_cargo_text, (content_rect.x + 20, divider_y + 50))
     
-    def draw_self_tab(self, content_rect):
+    def draw_self_tab_to_surface(self, surface, content_rect):
         """Draw the character status tab, 3/16/25"""
         section_font = pygame.font.Font(None, 28)
         item_font = pygame.font.Font(None, 24)
     
         # Character Stats Section
         stats_y = content_rect.y
-        pygame.draw.line(screen, WHITE, (content_rect.x + 20, stats_y + 30), 
+        pygame.draw.line(surface, WHITE, (content_rect.x + 20, stats_y + 30), 
                         (content_rect.right - 20, stats_y + 30), 1)
     
         stats_text = section_font.render("Character Stats", True, (200, 200, 255))
-        screen.blit(stats_text, (content_rect.x + 20, stats_y))
+        surface.blit(stats_text, (content_rect.x + 20, stats_y))
     
         # Display stats like health, level, experience
         stats_y += 40
@@ -1685,32 +1735,32 @@ class AsteroidFrontier:
     
         for stat in stats:
             stat_text = item_font.render(stat, True, WHITE)
-            screen.blit(stat_text, (content_rect.x + 40, stats_y))
+            surface.blit(stat_text, (content_rect.x + 40, stats_y))
             stats_y += 25
     
         # Skills Section
         skills_y = stats_y + 20
-        pygame.draw.line(screen, WHITE, (content_rect.x + 20, skills_y), 
+        pygame.draw.line(surface, WHITE, (content_rect.x + 20, skills_y), 
                         (content_rect.right - 20, skills_y), 1)
     
         skills_text = section_font.render("Skills", True, (200, 200, 255))
-        screen.blit(skills_text, (content_rect.x + 20, skills_y + 10))
+        surface.blit(skills_text, (content_rect.x + 20, skills_y + 10))
     
         # Display skills with levels
         skills_y += 40
         if hasattr(self.player, 'skills'):
             for skill_name, skill_level in self.player.skills.items():
                 skill_text = item_font.render(f"{skill_name.capitalize()}: {skill_level}", True, WHITE)
-                screen.blit(skill_text, (content_rect.x + 40, skills_y))
+                surface.blit(skill_text, (content_rect.x + 40, skills_y))
                 skills_y += 25
     
         # Faction Relations
         faction_y = skills_y + 20
-        pygame.draw.line(screen, WHITE, (content_rect.x + 20, faction_y), 
+        pygame.draw.line(surface, WHITE, (content_rect.x + 20, faction_y), 
                         (content_rect.right - 20, faction_y), 1)
     
         faction_text = section_font.render("Faction Standing", True, (200, 200, 255))
-        screen.blit(faction_text, (content_rect.x + 20, faction_y + 10))
+        surface.blit(faction_text, (content_rect.x + 20, faction_y + 10))
     
         # Display faction relations
         faction_y += 40
@@ -1726,10 +1776,10 @@ class AsteroidFrontier:
             
                 faction_display = faction_name.replace('_', ' ').title()
                 faction_text = item_font.render(f"{faction_display}: {standing}", True, color)
-                screen.blit(faction_text, (content_rect.x + 40, faction_y))
+                surface.blit(faction_text, (content_rect.x + 40, faction_y))
                 faction_y += 25
         
-    def draw_map_tab(self, content_rect):
+    def draw_map_tab_to_surface(self, surface, content_rect):
         """Draw the map tab with location information, fixed to stay within bounds"""
         section_font = pygame.font.Font(None, 28)
         item_font = pygame.font.Font(None, 24)
@@ -1737,8 +1787,8 @@ class AsteroidFrontier:
         # Title section
         title_y = content_rect.y
         map_title = section_font.render("System Map", True, (200, 200, 255))
-        screen.blit(map_title, (content_rect.x + 20, title_y))
-        pygame.draw.line(screen, WHITE, (content_rect.x + 20, title_y + 30), 
+        surface.blit(map_title, (content_rect.x + 20, title_y))
+        pygame.draw.line(surface, WHITE, (content_rect.x + 20, title_y + 30), 
                         (content_rect.right - 20, title_y + 30), 1)
 
         # Map instructions
@@ -1748,7 +1798,7 @@ class AsteroidFrontier:
             instructions = "Arrow keys: Move view | Home: Reset view"
 
         instr_text = item_font.render(instructions, True, WHITE)
-        screen.blit(instr_text, (content_rect.x + 40, title_y + 40))
+        surface.blit(instr_text, (content_rect.x + 40, title_y + 40))
 
         # Create a surface for the map area with the exact dimensions needed
         map_area = pygame.Rect(content_rect.x + 20, title_y + 70, 
@@ -1767,7 +1817,7 @@ class AsteroidFrontier:
         # Calculate scale and offset for drawing on our surface
         map_scale = min(map_area.width/1000, map_area.height/1000)
     
-        # Draw the system map onto our surface, not directly to the screen
+        # Draw the system map onto our surface
         # Note the offsets are relative to the surface, not the screen
         self.system_map.draw(map_surface, 
                            offset=(10 + self.map_offset[0], 
@@ -1801,13 +1851,13 @@ class AsteroidFrontier:
                                     int(surface_y) - 25))
                 map_surface.blit(pos_label, (label_x, label_y))
 
-        # Now blit the entire map surface to the screen at the map_area position
-        screen.blit(map_surface, map_area.topleft)
+        # Now blit the entire map surface to the surface at the map_area position
+        surface.blit(map_surface, map_area.topleft)
 
         # Locations list at the bottom (keep this as a reference)
         location_list_y = map_area.bottom + 10
         list_title = section_font.render("Locations:", True, (200, 200, 255))
-        screen.blit(list_title, (content_rect.x + 20, location_list_y))
+        surface.blit(list_title, (content_rect.x + 20, location_list_y))
 
         # Draw visible locations in a simpler format
         visible_count = 0
@@ -1833,16 +1883,16 @@ class AsteroidFrontier:
             
                 # Draw faction-colored dot
                 faction_color = self.get_faction_color(location.faction)
-                pygame.draw.circle(screen, faction_color, (location_x, location_y + 8), 5)
+                pygame.draw.circle(surface, faction_color, (location_x, location_y + 8), 5)
             
                 # Draw location name
                 name_text = item_font.render(location.name, True, WHITE)
-                screen.blit(name_text, (location_x + 10, location_y))
+                surface.blit(name_text, (location_x + 10, location_y))
             
                 location_x += name_text.get_width() + 40  # Space between locations
                 visible_count += 1
     
-    def draw_quests_tab(self, content_rect):
+    def draw_quests_tab_to_surface(self, surface, content_rect):
         """Draw the quests tab, 3/16/25"""
         section_font = pygame.font.Font(None, 28)
         item_font = pygame.font.Font(None, 24)
@@ -1850,14 +1900,14 @@ class AsteroidFrontier:
         # Title section
         title_y = content_rect.y
         quest_title = section_font.render("Quest Log", True, (200, 200, 255))
-        screen.blit(quest_title, (content_rect.x + 20, title_y))
-        pygame.draw.line(screen, WHITE, (content_rect.x + 20, title_y + 30), 
+        surface.blit(quest_title, (content_rect.x + 20, title_y))
+        pygame.draw.line(surface, WHITE, (content_rect.x + 20, title_y + 30), 
                         (content_rect.right - 20, title_y + 30), 1)
     
         # Active Quests Section
         active_y = title_y + 40
         active_text = section_font.render("Active Quests", True, (255, 255, 100))
-        screen.blit(active_text, (content_rect.x + 20, active_y))
+        surface.blit(active_text, (content_rect.x + 20, active_y))
     
         # Get player's active quests
         active_quests = []
@@ -1870,12 +1920,12 @@ class AsteroidFrontier:
             for quest in active_quests:
                 # Quest title
                 quest_title = item_font.render(quest.title, True, (255, 255, 100))
-                screen.blit(quest_title, (content_rect.x + 40, quest_y))
+                surface.blit(quest_title, (content_rect.x + 40, quest_y))
                 quest_y += 25
             
                 # Quest description
                 desc_text = item_font.render(quest.description, True, WHITE)
-                screen.blit(desc_text, (content_rect.x + 60, quest_y))
+                surface.blit(desc_text, (content_rect.x + 60, quest_y))
                 quest_y += 25
             
                 # Quest objectives
@@ -1891,21 +1941,21 @@ class AsteroidFrontier:
                                                 quest.objective_progress[i] >= quest.objective_targets[i]) else WHITE
                 
                     obj_text = item_font.render(f"• {objective}{progress}", True, obj_color)
-                    screen.blit(obj_text, (content_rect.x + 60, quest_y))
+                    surface.blit(obj_text, (content_rect.x + 60, quest_y))
                     quest_y += 20
             
                 quest_y += 15  # Space between quests
         else:
             no_quests = item_font.render("No active quests", True, WHITE)
-            screen.blit(no_quests, (content_rect.x + 40, active_y + 30))
+            surface.blit(no_quests, (content_rect.x + 40, active_y + 30))
     
         # Completed Quests Section
         completed_y = active_y + 200  # Fixed position or calculate based on number of active quests
-        pygame.draw.line(screen, WHITE, (content_rect.x + 20, completed_y - 10), 
+        pygame.draw.line(surface, WHITE, (content_rect.x + 20, completed_y - 10), 
                         (content_rect.right - 20, completed_y - 10), 1)
     
         completed_text = section_font.render("Completed Quests", True, (100, 255, 100))
-        screen.blit(completed_text, (content_rect.x + 20, completed_y))
+        surface.blit(completed_text, (content_rect.x + 20, completed_y))
     
         # Get completed quests
         completed_quests = []
@@ -1917,23 +1967,23 @@ class AsteroidFrontier:
             quest_y = completed_y + 30
             for quest in completed_quests:
                 quest_text = item_font.render(f"✓ {quest.title}", True, (100, 255, 100))
-                screen.blit(quest_text, (content_rect.x + 40, quest_y))
+                surface.blit(quest_text, (content_rect.x + 40, quest_y))
                 quest_y += 25
         else:
             no_completed = item_font.render("No completed quests", True, WHITE)
-            screen.blit(no_completed, (content_rect.x + 40, completed_y + 30))
+            surface.blit(no_completed, (content_rect.x + 40, completed_y + 30))
 
-    def draw_travel_menu(self):
+    def draw_travel_menu(self, surface):
         """Draw the travel menu 3/4/25"""
         # Create menu panel
         panel_rect = pygame.Rect(100, 100, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 200)
-        pygame.draw.rect(screen, (0, 0, 0), panel_rect)
-        pygame.draw.rect(screen, (255, 255, 255), panel_rect, 2)
+        pygame.draw.rect(surface, (0, 0, 0), panel_rect)
+        pygame.draw.rect(surface, (255, 255, 255), panel_rect, 2)
 
         # Draw title
         title_font = pygame.font.Font(None, 36)
         title = title_font.render("Travel to...", True, (255, 255, 255))
-        screen.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 20))
+        surface.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 20))
 
         # Draw destination options
         option_font = pygame.font.Font(None, 24)
@@ -1948,17 +1998,17 @@ class AsteroidFrontier:
             option_rect = pygame.Rect(panel_rect.x + 50, y_offset, panel_rect.width - 100, 30)
         
             if option_rect.collidepoint(mouse_x, mouse_y):
-                pygame.draw.rect(screen, (50, 50, 80), option_rect)
+                pygame.draw.rect(surface, (50, 50, 80), option_rect)
                 option_text = option_font.render(f"{i+1}. {display_name}", True, (255, 255, 0))
             else:
                 option_text = option_font.render(f"{i+1}. {display_name}", True, (200, 200, 200))
         
-            screen.blit(option_text, (panel_rect.x + 50, y_offset))
+            surface.blit(option_text, (panel_rect.x + 50, y_offset))
             y_offset += 30
 
         # Draw instructions
         instructions = option_font.render("Press number key to select, ESC to cancel", True, (150, 150, 150))
-        screen.blit(instructions, (panel_rect.centerx - instructions.get_width()//2, panel_rect.bottom - 40))
+        surface.blit(instructions, (panel_rect.centerx - instructions.get_width()//2, panel_rect.bottom - 40))
 
     def update_space_travel(self, dt):
         """Update space travel mode including weapon firing, 3/11/25"""
@@ -2680,14 +2730,14 @@ class AsteroidFrontier:
     
         return False
                 
-    def draw_merchant(self, screen):
+    def draw_merchant(self, surface):
         """Draw the merchant interface if active"""
         if self.game_state == GameState.MERCHANT:
             # First draw the game underneath
             if self.current_level and "all_sprites" in self.current_level:
                 for sprite in self.current_level["all_sprites"]:
                     cam_pos = self.camera.apply(sprite)
-                    screen.blit(sprite.image, cam_pos)
+                    surface.blit(sprite.image, cam_pos)
             
                 # Draw NPCs
                 for npc in self.npcs:
@@ -2696,11 +2746,11 @@ class AsteroidFrontier:
             
                 # Draw player
                 cam_pos = self.camera.apply(self.player)
-                screen.blit(self.player.image, cam_pos)
+                surface.blit(self.player.image, cam_pos)
         
             # Then draw the merchant interface
             if hasattr(self, 'merchant_system'):
-                self.merchant_system.draw(screen, self)
+                self.merchant_system.draw(surface, self)
     
     def draw_weapon_visual(self, screen):
         """Draw weapon visual effects, 3/11/25"""
@@ -2878,6 +2928,201 @@ class AsteroidFrontier:
             return self.merchant_system.handle_event(event, self)
     
         return False
+
+    def render_2d_surface_to_screen(self):
+        """Render the pygame surface to the OpenGL screen"""
+        # Make sure we have a surface to render
+        if not hasattr(self, 'pygame_surface') or self.pygame_surface is None:
+            return
+        
+        # Save the current OpenGL matrices
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        glOrtho(0, self.screen_width, self.screen_height, 0, -1, 1)
+    
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        glLoadIdentity()
+    
+        # Disable 3D features
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_LIGHTING)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    
+        # Convert surface to string data for texture
+        tex_data = pygame.image.tostring(self.pygame_surface, "RGBA", 1)
+    
+        # Create and set up texture
+        texture = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, texture)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.screen_width, self.screen_height, 
+                   0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data)
+    
+        # Draw full-screen quad with the texture
+        glEnable(GL_TEXTURE_2D)
+        glColor4f(1, 1, 1, 1)  # Full opacity white
+    
+        glBegin(GL_QUADS)
+        glTexCoord2f(0, 0)
+        glVertex2f(0, 0)
+    
+        glTexCoord2f(1, 0)
+        glVertex2f(self.screen_width, 0)
+    
+        glTexCoord2f(1, 1)
+        glVertex2f(self.screen_width, self.screen_height)
+    
+        glTexCoord2f(0, 1)
+        glVertex2f(0, self.screen_height)
+        glEnd()
+    
+        # Clean up
+        glDeleteTextures([texture])
+    
+        # Restore the previous matrices and states
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()
+    
+        glMatrixMode(GL_MODELVIEW)
+        glPopMatrix()
+    
+        # Reset states
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LIGHTING)
+
+    def draw_overworld_to_surface(self, surface):
+        """Draw the overworld to a specific surface"""
+        # Fill the surface with background
+        surface.fill(SPACE_BG)
+    
+        # Draw level with camera offset
+        self.camera.update(self.player)
+    
+        if self.current_level and "all_sprites" in self.current_level:
+            for sprite in self.current_level["all_sprites"]:
+                # Calculate position with camera offset
+                cam_pos = self.camera.apply(sprite)
+                surface.blit(sprite.image, cam_pos)
+    
+        # Draw NPCs with camera offset
+        for npc in self.npcs:
+            cam_pos = self.camera.apply(npc)
+            surface.blit(npc.image, cam_pos)
+    
+        # Draw player with camera offset
+        cam_pos = self.camera.apply(self.player)
+        surface.blit(self.player.image, cam_pos)
+    
+        # Draw dialogue if active
+        if self.dialogue_manager.is_dialogue_active():
+            self.dialogue_manager.draw(surface)  # Make sure dialogue_manager.draw accepts a surface parameter
+    
+        # Draw UI elements if not in dialogue
+        if self.game_state != GameState.DIALOGUE:
+            self.draw_ui(surface)  # Using the updated draw_ui that accepts a surface
+    
+        # Draw the menu if any menu view is active
+        if self.show_inventory or self.show_map or self.show_quest_log:
+            self.draw_menu_screen_to_surface(surface)
+    
+        # Draw travel menu if in that state
+        if self.game_state == GameState.TRAVEL_MENU:
+            self.draw_travel_menu_to_surface(surface)
+
+    def draw_menu_screen_to_surface(self, surface):
+        """Draw the unified tabbed menu screen to a surface"""
+        # Create the main panel
+        panel_rect = pygame.Rect(50, 50, self.screen_width - 100, self.screen_height - 100)
+        pygame.draw.rect(surface, (0, 0, 0), panel_rect)
+        pygame.draw.rect(surface, WHITE, panel_rect, 2)
+    
+        # Define tabs
+        tab_y = panel_rect.y + 10
+        tab_height = 40
+        tab_width = panel_rect.width // 4
+    
+        tabs = ["Items", "Self", "Map", "Quests"]
+    
+        # Draw tabs
+        for i, tab_name in enumerate(tabs):
+            tab_rect = pygame.Rect(panel_rect.x + i * tab_width, tab_y, tab_width, tab_height)
+        
+            # Highlight active tab
+            if i == self.active_tab:
+                pygame.draw.rect(surface, (70, 70, 100), tab_rect)
+            else:
+                pygame.draw.rect(surface, (30, 30, 50), tab_rect)
+            
+            pygame.draw.rect(surface, WHITE, tab_rect, 1)
+        
+            # Tab text
+            tab_font = pygame.font.Font(None, 28)
+            tab_text = tab_font.render(tab_name, True, WHITE)
+            surface.blit(tab_text, (tab_rect.centerx - tab_text.get_width()//2, 
+                                 tab_rect.centery - tab_text.get_height()//2))
+    
+        # Draw content area
+        content_rect = pygame.Rect(panel_rect.x, panel_rect.y + tab_height + 20, 
+                                panel_rect.width, panel_rect.height - tab_height - 40)
+    
+        # Draw appropriate content based on active tab
+        if self.active_tab == 0:
+            self.draw_items_tab_to_surface(surface, content_rect)
+        elif self.active_tab == 1:
+            self.draw_self_tab_to_surface(surface, content_rect)
+        elif self.active_tab == 2:
+            self.draw_map_tab_to_surface(surface, content_rect)
+        elif self.active_tab == 3:
+            self.draw_quests_tab_to_surface(surface, content_rect)
+    
+        # Draw navigation instructions
+        nav_font = pygame.font.Font(None, 24)
+        nav_text = nav_font.render("Tab/1-4: Switch Tabs | Q: Close Menu", True, (150, 150, 150))
+        surface.blit(nav_text, (panel_rect.centerx - nav_text.get_width()//2, panel_rect.bottom - 30))
+
+    def draw_travel_menu_to_surface(self, surface):
+        """Draw the travel menu to a surface"""
+        # Create menu panel
+        panel_rect = pygame.Rect(100, 100, self.screen_width - 200, self.screen_height - 200)
+        pygame.draw.rect(surface, (0, 0, 0), panel_rect)
+        pygame.draw.rect(surface, (255, 255, 255), panel_rect, 2)
+
+        # Draw title
+        title_font = pygame.font.Font(None, 36)
+        title = title_font.render("Travel to...", True, (255, 255, 255))
+        surface.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 20))
+
+        # Draw destination options
+        option_font = pygame.font.Font(None, 24)
+        y_offset = panel_rect.y + 70
+
+        for i, destination in enumerate(self.travel_options):
+            # Format destination name (replace underscores with spaces and capitalize)
+            display_name = destination.replace("_", " ").title()
+        
+            # Highlight the option if mouse is hovering over it
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            option_rect = pygame.Rect(panel_rect.x + 50, y_offset, panel_rect.width - 100, 30)
+        
+            if option_rect.collidepoint(mouse_x, mouse_y):
+                pygame.draw.rect(surface, (50, 50, 80), option_rect)
+                option_text = option_font.render(f"{i+1}. {display_name}", True, (255, 255, 0))
+            else:
+                option_text = option_font.render(f"{i+1}. {display_name}", True, (200, 200, 200))
+        
+            surface.blit(option_text, (panel_rect.x + 50, y_offset))
+            y_offset += 30
+
+        # Draw instructions
+        instructions = option_font.render("Press number key to select, ESC to cancel", True, (150, 150, 150))
+        surface.blit(instructions, (panel_rect.centerx - instructions.get_width()//2, panel_rect.bottom - 40))
+
+
+
 
 
 def main():

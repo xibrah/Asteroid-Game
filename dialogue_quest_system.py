@@ -364,8 +364,11 @@ class DialogueManager:
         """Check if a dialogue is currently active"""
         return self.active_dialogue is not None
     
-    def draw(self, screen):
+    def draw(self, surface=None):
         """Draw the dialogue UI"""
+         # Use provided surface or fall back to global screen
+        target = surface if surface is not None else screen
+        
         if not self.active_dialogue:
             return
             
@@ -381,19 +384,19 @@ class DialogueManager:
         
         # Draw dialogue box background
         dialogue_box = pygame.Rect(box_x, box_y, box_width, box_height)
-        pygame.draw.rect(screen, (0, 0, 0), dialogue_box)
-        pygame.draw.rect(screen, (255, 255, 255), dialogue_box, 2)
+        pygame.draw.rect(target, (0, 0, 0), dialogue_box)
+        pygame.draw.rect(target, (255, 255, 255), dialogue_box, 2)
         
         # Draw NPC name
         if self.current_npc:
             name_text = self.name_font.render(self.current_npc.name, True, (255, 255, 255))
-            screen.blit(name_text, (box_x + 20, box_y + 15))
+            target.blit(name_text, (box_x + 20, box_y + 15))
         
         # Draw dialogue text
         text_lines = self._wrap_text(node.text, box_width - 40)
         for i, line in enumerate(text_lines):
             text_surface = self.font.render(line, True, (255, 255, 255))
-            screen.blit(text_surface, (box_x + 20, box_y + 50 + i * 30))
+            target.blit(text_surface, (box_x + 20, box_y + 50 + i * 30))
         
         # Draw response options
         y_offset = 50 + len(text_lines) * 30 + 20
@@ -405,10 +408,10 @@ class DialogueManager:
             mouse_x, mouse_y = pygame.mouse.get_pos()
             if response_rect.collidepoint(mouse_x, mouse_y):
                 color = (255, 255, 0)
-                pygame.draw.rect(screen, (50, 50, 50), response_rect)
+                pygame.draw.rect(target, (50, 50, 50), response_rect)
             
             response_surface = self.font.render(f"{i+1}. {response_text}", True, color)
-            screen.blit(response_surface, (box_x + 20, box_y + y_offset + i * 30))
+            target.blit(response_surface, (box_x + 20, box_y + y_offset + i * 30))
     
     def handle_click(self, pos):
         """Handle mouse clicks on dialogue options"""
