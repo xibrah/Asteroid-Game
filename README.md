@@ -1,9 +1,5 @@
-This is a great start for an Asteroid Frontier RPG game!
+Let me explain what is built so far:
 
-Note:
-Requires Pygame, install with: pip install pygame
-							&: pip install pygame pyopengl
-							&: pip install numpy
 ## Game Structure
 
 The code is organized into several interconnected systems:
@@ -26,10 +22,10 @@ The code is organized into several interconnected systems:
 
 ## Game World
 
-The game includes locations from the Asteroid Frontier universe:
+The game includes locations from your Asteroid Frontier universe:
 - **Psyche Township**: Main hub with characters like Stella, Gus, and #27
 - **The Rusty Rocket**: Bar on Ceres with Ruby and CV
-- **Other Locations**: Pallas. Coming soon: Vesta, Luna, and Mars
+- **Other Locations**: Pallas, Vesta, Luna, and Mars
 
 ## How to Run the Game
 
@@ -41,8 +37,15 @@ To run this game, you would need to:
 
 ## Next Steps for Development
 
+Here are some next steps to consider:
+
 1. **Asset Creation**: Add sprites for characters, items, and environments
-2. **Combat System**: Implement encounters with enemies from Asteroid Frontier universe
+2. **Combat System**: Implement encounters with enemies from your universe
 3. **Advanced Quests**: Create more complex quest chains tied to your story
-4. **Ship Management**: Add a system for customizing the player's ship
+4. **Ship Management**: Add a system for upgrading and customizing the player's ship
 5. **Faction System**: Develop more complex faction relationships and reputation effects
+
+The code is modular and extensible, making it easy to expand with new features
+
+Note:
+requires Pygame
