@@ -453,6 +453,11 @@ class AsteroidFrontier:
         # Update camera
         self.camera.set_map_size(self.current_level["width"], self.current_level["height"])
     
+
+
+
+
+
     def check_exit_collision(self):
         """Check if player is colliding with an exit tile"""
         # Make sure we have a valid current_level object
@@ -756,7 +761,7 @@ class AsteroidFrontier:
             if not hasattr(self, 'space_travel') or self.space_travel is None:
                 from space_travel import SpaceTravel, AsteroidField
                 self.space_travel = SpaceTravel(SCREEN_WIDTH, SCREEN_HEIGHT)
-                
+            
                 # Add locations to space travel
                 for loc_id, loc_data in self.map_locations.items():
                     self.space_travel.add_location(
@@ -766,12 +771,23 @@ class AsteroidFrontier:
                         loc_data["pos"][1],
                         loc_data["color"]
                     )
+        
+            # If we're docked somewhere, position the ship near that location
+            if hasattr(self, 'docked_location') and self.docked_location and self.docked_location in self.map_locations:
+                # Position ship near the docked location
+                dock_loc = self.map_locations[self.docked_location]
+                self.space_travel.ship_pos[0] = dock_loc["pos"][0] + random.randint(-50, 50)
+                self.space_travel.ship_pos[1] = dock_loc["pos"][1] + random.randint(-50, 50)
+                print(f"Positioning ship near {self.docked_location}")
+            
+                # Clear docked location since we're now in space
+                self.docked_location = None
             
             # Set game state
             self.game_state = GameState.SPACE_TRAVEL
             print("Space travel mode activated successfully")
             return True
-            
+        
         except Exception as e:
             print(f"ERROR initializing space travel: {e}")
             return False
@@ -1000,6 +1016,149 @@ class AsteroidFrontier:
             self.create_default_level()
             return False  # Still return False to indicate failure
     
+    def check_repair_interaction(self):
+        """Check if player is interacting with repair points during EVA"""
+        # Only check in EVA mode
+        if not self.current_level or self.current_level.get("name") != "ship_eva":
+            return False
+    
+        # Reset flag
+        self.near_repair = False
+        self.current_repair_point = None
+    
+        # Find repair points
+        repair_points = [obj for obj in self.current_level["objects"] if hasattr(obj, 'is_repair_point')]
+    
+        if not repair_points:
+            print("No repair points found in EVA mode!")
+            return False
+    
+        for point in repair_points:
+            # Calculate distance to repair point center
+            dx = self.player.rect.centerx - point.rect.centerx
+            dy = self.player.rect.centery - point.rect.centery
+            distance = math.sqrt(dx**2 + dy**2)
+    
+            # If close enough to interact
+            if distance < TILE_SIZE * 2:
+                self.near_repair = True
+                self.current_repair_point = point
+        
+                # Check for E key press
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_e]:
+                    print(f"Repairing {point.repair_type}")
+                    self.perform_repair(point)
+                    return True
+        
+                # Log only once when near a repair point
+                if not hasattr(self, '_near_repair_logged') or not self._near_repair_logged:
+                    self._near_repair_logged = True
+                    print(f"Player near {point.repair_type} repair point")
+        
+                break  # Only handle one repair point at a time
+    
+        # Reset the logged state when not near any repair point
+        if hasattr(self, '_near_repair_logged') and self._near_repair_logged and not self.near_repair:
+            self._near_repair_logged = False
+    
+        return False
+
+    def perform_repair(self, repair_point):
+        """Perform repairs on a ship component"""
+        repair_type = repair_point.repair_type
+    
+        # Find the ship sprite (should be the first non-star sprite in all_sprites)
+        ship_sprite = None
+        for sprite in self.current_level["all_sprites"]:
+            if hasattr(sprite, 'image') and sprite.image.get_width() > 10:  # Skip star sprites
+                ship_sprite = sprite
+                break
+    
+        if not ship_sprite:
+            print("Error: Ship sprite not found for repair!")
+            return
+    
+        print(f"Repairing {repair_type} on ship")
+    
+        if repair_type == "hull":
+            # Visual feedback - color change to repair the damage
+            pygame.draw.rect(ship_sprite.image, 
+                            (100, 100, 100),  # Restore to hull color
+                            (repair_point.rect.x - ship_sprite.rect.x,
+                             repair_point.rect.y - ship_sprite.rect.y,
+                             repair_point.rect.width,
+                            repair_point.rect.height))
+    
+            # Remove this repair point
+            self.current_level["objects"].remove(repair_point)
+            self.current_level["all_sprites"].remove(repair_point)
+            print("Hull damage repaired!")
+    
+        elif repair_type == "engine":
+            # Visual feedback for engine repair
+            pygame.draw.rect(ship_sprite.image, 
+                            (100, 100, 100),  # Restore to hull color
+                            (repair_point.rect.x - ship_sprite.rect.x,
+                             repair_point.rect.y - ship_sprite.rect.y,
+                             repair_point.rect.width,
+                            repair_point.rect.height))
+    
+            # Remove this repair point
+            self.current_level["objects"].remove(repair_point)
+            self.current_level["all_sprites"].remove(repair_point)
+            print("Engine repaired!")
+    
+        elif repair_type == "weapon":
+            # Calculate center of the weapon damage point relative to ship
+            center_x = repair_point.rect.centerx - ship_sprite.rect.x
+            center_y = repair_point.rect.centery - ship_sprite.rect.y
+            radius = repair_point.rect.width // 2
+    
+            # Visual feedback for weapon repair
+            pygame.draw.circle(ship_sprite.image, 
+                              (100, 100, 100),  # Restore to hull color
+                              (center_x, center_y),
+                              radius)
+    
+            # Remove this repair point
+            self.current_level["objects"].remove(repair_point)
+            self.current_level["all_sprites"].remove(repair_point)
+            print("Weapon system repaired!")
+    
+        # Check if all repairs are done
+        repair_points = [obj for obj in self.current_level["objects"] if hasattr(obj, 'is_repair_point')]
+        if not repair_points:
+            print("All repairs completed!")
+            # Maybe show message or add reward?
+
+    def check_docking_proximity(self):
+        """Check if the player's ship is close enough to dock at a location"""
+        if self.game_state != GameState.SPACE_TRAVEL or not hasattr(self, 'space_travel'):
+            return None
+        
+        # Check if the space_travel system has a near_location attribute
+        if hasattr(self.space_travel, 'near_location') and self.space_travel.near_location:
+            return self.space_travel.near_location
+        
+        # Fallback method if near_location isn't being set
+        # Check proximity to all locations manually
+        if hasattr(self.space_travel, 'locations'):
+            for loc_id, location in self.space_travel.locations.items():
+                # Calculate distance to this location
+                dx = self.space_travel.ship_pos[0] - location['pos'][0]
+                dy = self.space_travel.ship_pos[1] - location['pos'][1]
+                distance = math.sqrt(dx*dx + dy*dy)
+            
+                # If close enough to dock (within 100 units)
+                if distance < 100:
+                    print(f"Near location: {loc_id} at distance {distance}")
+                    # Cache this for display
+                    self.space_travel.near_location = loc_id
+                    return loc_id
+                
+        return None
+
     def dock_at_location(self, location_id):
         """Dock at a location from space mode"""
         print(f"Docking at {location_id}")
@@ -1012,6 +1171,8 @@ class AsteroidFrontier:
     
         return success
         
+
+
     def check_merchant_interaction(self):
         """Check if player is interacting with a merchant NPC"""
         # Make sure we're in the right game state and have NPCs
@@ -1124,6 +1285,8 @@ class AsteroidFrontier:
             
         return False
     
+
+
     def add_save_system(self):
         """Add the save system to the game"""
         self.save_system = SaveSystem(self)
@@ -1148,6 +1311,11 @@ class AsteroidFrontier:
             if not hasattr(self, '_last_menu_state') or self._last_menu_state != self.game_state:
                 self.save_load_menu.refresh_save_list(self)
                 self._last_menu_state = self.game_state
+
+
+
+
+
 
     def draw(self):
         """Render the game"""
@@ -1188,9 +1356,10 @@ class AsteroidFrontier:
             if self.show_inventory or self.show_map or self.show_quest_log:
                 self.draw_menu_screen()
                 
-            # Draw travel menu if in that state
-            if self.game_state == GameState.TRAVEL_MENU:
-                self.draw_travel_menu()
+        # Draw travel menu if in that state
+        elif self.game_state == GameState.TRAVEL_MENU:
+            #print("Should be drawing travel menu now")  # Debug print
+            self.draw_travel_menu()
         
         elif self.game_state == GameState.SPACE_TRAVEL:
             # Draw space travel view
@@ -1756,42 +1925,49 @@ class AsteroidFrontier:
             
     def draw_travel_menu(self):
         """Draw the travel menu"""
-        # Create menu panel
+        #print("Drawing travel menu")  # Debug print
+        # Clear the screen with a dark background
+        #screen.fill((20, 20, 40))  # Dark blue-ish background
+    
+        # Create menu panel with solid background
         panel_rect = pygame.Rect(100, 100, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 200)
-        pygame.draw.rect(screen, (0, 0, 0), panel_rect)
-        pygame.draw.rect(screen, (255, 255, 255), panel_rect, 2)
+        pygame.draw.rect(screen, (50, 50, 70), panel_rect)  # Solid color
+        pygame.draw.rect(screen, (200, 200, 255), panel_rect, 2)  # Bright border
 
         # Draw title
-        title_font = pygame.font.Font(None, 36)
+        title_font = pygame.font.Font(None, 48)  # Larger, more visible font
         title = title_font.render("Travel to...", True, (255, 255, 255))
-        screen.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 20))
+        screen.blit(title, (panel_rect.centerx - title.get_width()//2, panel_rect.y + 30))
 
         # Draw destination options
-        option_font = pygame.font.Font(None, 24)
-        y_offset = panel_rect.y + 70
+        option_font = pygame.font.Font(None, 32)  # Larger font for options
+        y_offset = panel_rect.y + 100
+
+        # Debug info - make sure we have options
+        if not self.travel_options:
+            debug_text = option_font.render("No destinations available!", True, (255, 100, 100))
+            screen.blit(debug_text, (panel_rect.centerx - debug_text.get_width()//2, y_offset))
+            return
 
         for i, destination in enumerate(self.travel_options):
             # Format destination name (replace underscores with spaces and capitalize)
             display_name = destination.replace("_", " ").title()
-        
-            # Highlight the option if mouse is hovering over it
-            mouse_x, mouse_y = pygame.mouse.get_pos()
-            option_rect = pygame.Rect(panel_rect.x + 50, y_offset, panel_rect.width - 100, 30)
-        
-            if option_rect.collidepoint(mouse_x, mouse_y):
-                pygame.draw.rect(screen, (50, 50, 80), option_rect)
-                option_text = option_font.render(f"{i+1}. {display_name}", True, (255, 255, 0))
-            else:
-                option_text = option_font.render(f"{i+1}. {display_name}", True, (200, 200, 200))
-        
-            screen.blit(option_text, (panel_rect.x + 50, y_offset))
-            y_offset += 30
+            if destination == "eva":
+                display_name = "Perform EVA (Extravehicular Activity)"
+            elif destination == "space":
+                display_name = "Enter Space"
+    
+            # Always make option visible
+            option_text = option_font.render(f"{i+1}. {display_name}", True, (255, 255, 100))
+            screen.blit(option_text, (panel_rect.x + 70, y_offset))
+            y_offset += 40  # More spacing
 
         # Draw instructions
-        instructions = option_font.render("Press number key to select, ESC to cancel", True, (150, 150, 150))
-        screen.blit(instructions, (panel_rect.centerx - instructions.get_width()//2, panel_rect.bottom - 40))
+        instr_font = pygame.font.Font(None, 28)
+        instructions = instr_font.render("Press number key to select, ESC to cancel", True, (200, 200, 200))
+        screen.blit(instructions, (panel_rect.centerx - instructions.get_width()//2, panel_rect.bottom - 50))
 
-
+    
 
 
     def handle_events(self):
@@ -1820,20 +1996,20 @@ class AsteroidFrontier:
                         self.show_map = (self.active_tab == 2)
                         self.show_quest_log = (self.active_tab == 3)
                         return True
-                
+            
                     # Q to close menu
                     elif event.key == pygame.K_q:
                         self.show_inventory = False
                         self.show_map = False
                         self.show_quest_log = False
                         return True
-                
+            
                     # Map navigation with arrow keys - only when on map tab
                     elif self.show_map and self.active_tab == 2:
                         # Initialize map_offset if it doesn't exist
                         if not hasattr(self, 'map_offset'):
                             self.map_offset = [0, 0]
-                    
+                
                         # Move map with arrow keys
                         if event.key == pygame.K_LEFT:
                             self.map_offset[0] += 50  # Move map right (view left)
@@ -1851,132 +2027,155 @@ class AsteroidFrontier:
                             # Reset map position
                             self.map_offset = [0, 0]
                             return True
+            
+                return True  # Return from event handling if menu is open
         
             # Regular event handling for game when menu is not open
-            if not menu_open:
+            if event.type == pygame.KEYDOWN:
                 # Handle merchant events if in merchant mode
                 if self.game_state == GameState.MERCHANT:
-                    if hasattr(self, 'merchant_system') and self.merchant_system.handle_event(event, self):
-                        continue
-            
-                if event.type == pygame.KEYDOWN:
-                
-                    # Special key combinations for save/load
-                    if event.key == pygame.K_F5:
-                        # Quick save
-                        if hasattr(self, 'save_system'):
-                            self.save_system.quick_save()
-                            return True
+                    if self.handle_merchant_events(event):
+                        return True
         
-                    if event.key == pygame.K_F9:
-                        # Quick load
-                        if hasattr(self, 'save_system'):
-                            self.save_system.quick_load()
-                            return True
-        
-                    if event.key == pygame.K_F6:
-                        # Save menu
-                        self.game_state = GameState.SAVE_MENU
-                        self.update_save_load_menus()
+                # Special key combinations for save/load
+                if event.key == pygame.K_F5:
+                    # Quick save
+                    if hasattr(self, 'save_system'):
+                        self.save_system.quick_save()
                         return True
     
-                    if event.key == pygame.K_F7:
-                        # Load menu
-                        self.game_state = GameState.LOAD_MENU
-                        self.update_save_load_menus()
+                if event.key == pygame.K_F9:
+                    # Quick load
+                    if hasattr(self, 'save_system'):
+                        self.save_system.quick_load()
                         return True
+    
+                if event.key == pygame.K_F6:
+                    # Save menu
+                    self.game_state = GameState.SAVE_MENU
+                    self.update_save_load_menus()
+                    return True
 
-                    # Special handling for EVA mode
-                    if event.key == pygame.K_ESCAPE and self.current_level and self.current_level.get("name") == "ship_eva":
-                        print("ESC pressed in EVA mode - returning to ship")
-                        self.end_eva()
-                        return True
-                
-                    # Main menu Enter key handling
-                    if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
-                        print("Enter key pressed at main menu, transitioning to OVERWORLD")
+                if event.key == pygame.K_F7:
+                    # Load menu
+                    self.game_state = GameState.LOAD_MENU
+                    self.update_save_load_menus()
+                    return True
+
+                # Special handling for EVA mode
+                if event.key == pygame.K_ESCAPE and self.current_level and self.current_level.get("name") == "ship_eva":
+                    print("ESC pressed in EVA mode - returning to ship")
+                    self.end_eva()
+                    return True
+        
+                # Main menu Enter key handling
+                if self.game_state == GameState.MAIN_MENU and event.key == pygame.K_RETURN:
+                    print("Enter key pressed at main menu, transitioning to OVERWORLD")
+                    self.game_state = GameState.OVERWORLD
+                    return True
+
+                # Handle escape key safely
+                if event.key == pygame.K_ESCAPE:
+                    if self.game_state == GameState.SPACE_TRAVEL:
+                        # Ask for confirmation before exiting space mode
+                        # For now, just go back to the last location
+                        if self.current_level and 'name' in self.current_level:
+                            self.load_location(self.current_level['name'])
+                            self.game_state = GameState.OVERWORLD
+                            self.in_space_mode = False
+                        else:
+                            # Fallback to main menu
+                            self.game_state = GameState.MAIN_MENU
+                    elif self.game_state == GameState.MAIN_MENU:
+                        return False
+                    elif self.game_state == GameState.TRAVEL_MENU:
+                        print("Escape from travel menu, returning to OVERWORLD")
                         self.game_state = GameState.OVERWORLD
                         return True
-
-                    # Handle escape key safely
-                    if event.key == pygame.K_ESCAPE:
-                        if self.game_state == GameState.SPACE_TRAVEL:
-                            # Ask for confirmation before exiting space mode
-                            # For now, just go back to the last location
-                            if self.current_level and 'name' in self.current_level:
-                                self.load_location(self.current_level['name'])
-                                self.game_state = GameState.OVERWORLD
-                                self.in_space_mode = False
-                            else:
-                                # Fallback to main menu
-                                self.game_state = GameState.MAIN_MENU
-                        elif self.game_state == GameState.MAIN_MENU:
-                            return False
-                        # Other states...
-                        elif self.game_state == GameState.MAIN_MENU:
-                            return False
-                        elif self.game_state == GameState.TRAVEL_MENU:
-                            print("Escape from travel menu, returning to OVERWORLD")
-                            self.game_state = GameState.OVERWORLD
-                            return True
-                        else:
-                            self.game_state = GameState.MAIN_MENU
-            
-                    # Handle events for Save Menu states
-                    if self.game_state == GameState.SAVE_MENU or self.game_state == GameState.LOAD_MENU:
-                        if hasattr(self, 'save_load_menu'):
-                            self.save_load_menu.handle_event(event, self)
-                            return True
-                
-                    # Safe travel menu input handling
-                    if self.game_state == GameState.TRAVEL_MENU:
-                        try:
-                            # Number keys 1-9
-                            if pygame.K_1 <= event.key <= pygame.K_9:
-                                index = event.key - pygame.K_1
-                                print(f"Travel menu selection: index {index}")
-                        
-                                if 0 <= index < len(self.travel_options):
-                                    destination = self.travel_options[index]
-                                    print(f"Selected destination: {destination}")
-                            
-                                    # First change state to avoid issues
-                                    self.game_state = GameState.OVERWORLD
-                                
-                                    # Then initiate travel
-                                    success = self.travel_to_location(destination)
-                                    if not success:
-                                        print(f"Travel to {destination} failed!")
-                                else:
-                                    print(f"Invalid selection index: {index}")
-                        except Exception as e:
-                            print(f"ERROR in travel menu handling: {e}")
-                            self.game_state = GameState.OVERWORLD  # Recover gracefully
-            
-                    # Open menu with Q key
-                    if event.key == pygame.K_q and self.game_state == GameState.OVERWORLD:
-                        self.show_inventory = not self.show_inventory
-                        if self.show_inventory:
-                            self.active_tab = 0  # Items tab
-                            self.show_map = False
-                            self.show_quest_log = False
+                    else:
+                        self.game_state = GameState.MAIN_MENU
+        
+                # Handle events for Save Menu states
+                if self.game_state == GameState.SAVE_MENU or self.game_state == GameState.LOAD_MENU:
+                    if hasattr(self, 'save_load_menu'):
+                        self.save_load_menu.handle_event(event, self)
                         return True
             
-                    # Handle dialogue key input
-                    if self.dialogue_manager.is_dialogue_active():
-                        self.dialogue_manager.handle_key(event.key)
+                # Safe travel menu input handling
+                if self.game_state == GameState.TRAVEL_MENU:
+                    try:
+                        # Number keys 1-9
+                        if pygame.K_1 <= event.key <= pygame.K_9:
+                            index = event.key - pygame.K_1
+                            print(f"Travel menu selection: index {index}")
+                    
+                            if 0 <= index < len(self.travel_options):
+                                destination = self.travel_options[index]
+                                print(f"Selected destination: {destination}")
+                            
+                                # First change state to avoid issues
+                                self.game_state = GameState.OVERWORLD
+                                
+                                # Then initiate travel
+                                success = self.travel_to_location(destination)
+                                if not success:
+                                    print(f"Travel to {destination} failed!")
+                            else:
+                                print(f"Invalid selection index: {index}")
+                    except Exception as e:
+                        print(f"ERROR in travel menu handling: {e}")
+                        self.game_state = GameState.OVERWORLD  # Recover gracefully
+                    return True
         
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:  # Left click
-                        if self.dialogue_manager.is_dialogue_active():
-                            self.dialogue_manager.handle_click(event.pos)
-                        elif self.game_state == GameState.OVERWORLD:
-                            # Check for NPC interaction if we're close enough
-                            for npc in self.npcs:
-                                if pygame.sprite.collide_rect(self.player, npc):
-                                    self.dialogue_manager.start_dialogue(npc, self.player)
-                                    self.game_state = GameState.DIALOGUE
-                                    break
+                # Open menu with Q key
+                if event.key == pygame.K_q and self.game_state == GameState.OVERWORLD:
+                    self.show_inventory = not self.show_inventory
+                    if self.show_inventory:
+                        self.active_tab = 0  # Items tab
+                        self.show_map = False
+                        self.show_quest_log = False
+                    return True
+                
+                # Merchant interaction with T key
+                if event.key == pygame.K_t and self.game_state == GameState.OVERWORLD:
+                    if self.check_merchant_interaction():
+                        return True
+                
+                # Direct E key handling for NPC interactions and exits
+                if event.key == pygame.K_e and self.game_state == GameState.OVERWORLD:
+                    # First check exit tiles
+                    if self.check_exit_collision():
+                        return True
+                    
+                    # Then check NPC interactions
+                    for npc in self.npcs:
+                        if pygame.sprite.collide_rect(self.player, npc):
+                            self.dialogue_manager.start_dialogue(npc, self.player)
+                            self.game_state = GameState.DIALOGUE
+                            return True
+                        
+                    # Check for helm interaction in ship cabin
+                    if self.current_level and self.current_level.get("name") == "ship_cabin":
+                        self.check_ship_interactions()
+                        return True
+        
+                # Handle dialogue key input
+                if self.dialogue_manager.is_dialogue_active():
+                    self.dialogue_manager.handle_key(event.key)
+                    return True
+    
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Left click
+                    if self.dialogue_manager.is_dialogue_active():
+                        self.dialogue_manager.handle_click(event.pos)
+                        return True
+                    elif self.game_state == GameState.OVERWORLD:
+                        # Check for NPC interaction if we're close enough
+                        for npc in self.npcs:
+                            if pygame.sprite.collide_rect(self.player, npc):
+                                self.dialogue_manager.start_dialogue(npc, self.player)
+                                self.game_state = GameState.DIALOGUE
+                                return True
     
             return True
     
@@ -2015,6 +2214,49 @@ class AsteroidFrontier:
                     if keys[pygame.K_HOME]:
                         # Reset map position
                         self.map_offset = [0, 0]
+            
+            # Check specifically for EVA mode
+            if self.current_level and self.current_level.get("name") == "ship_eva":
+                self.check_repair_interaction()  # This should check for the E key
+
+        elif self.game_state == GameState.DIALOGUE:
+            # Check if dialogue has ended
+            if not self.dialogue_manager.is_dialogue_active():
+                self.game_state = GameState.OVERWORLD
+                #Make sure any "held" keys don't carry over
+                pygame.event.clear()  # Clear any queued events
+
+        elif self.game_state == GameState.SPACE_TRAVEL:
+            # Update space travel
+
+            keys = pygame.key.get_pressed()  # Get current keys
+            
+            # Handle ship movement
+            self.space_travel.update(keys, dt)
+    
+            # Check for location proximity - both for display and docking
+            near_location = self.check_docking_proximity()
+    
+            # Show docking prompt if near a location
+            if near_location:
+                # Show docking prompt (handled in draw)
+        
+                # Check for E key to dock
+                if keys[pygame.K_e]:
+                    # Only dock if we haven't recently pressed E (to avoid multiple dockings)
+                    current_time = pygame.time.get_ticks()
+                    if not hasattr(self, 'last_dock_attempt') or current_time - self.last_dock_attempt > 500:
+                        self.last_dock_attempt = current_time
+                        print(f"Docking at location: {near_location}")
+                        self.dock_at_location(near_location)
+                        return
+    
+            # Handle weapon firing with spacebar
+            if keys[pygame.K_SPACE]:
+                self.fire_ship_weapon()
+
+
+
 
 
 def main():
