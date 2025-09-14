@@ -65,6 +65,7 @@ class AsteroidFrontier:
         self.text_dialogue = SimpleTextDialogue(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.quest_manager = QuestManager()
         self.save_system = SaveSystem(self)
+        self.merchant_system = MerchantSystem(SCREEN_WIDTH, SCREEN_HEIGHT)
 
         # Initialize empty objects for safety
         self.current_level = None

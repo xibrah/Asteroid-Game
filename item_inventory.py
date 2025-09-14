@@ -356,6 +356,30 @@ class ItemFactory:
                 "value": 50,
                 "quest_id": "q002"
             },
+            # Ruby's Bar Items
+            "synthhol": {
+                "class": Consumable,
+                "name": "Smooth Synthhol",
+                "description": "Ruby's finest synthetic alcohol. Smooth, safe, and gets the job done.",
+                "value": 10,
+                "effect_type": "morale",
+                "effect_value": 15
+            },
+            "martian_whiskey": {
+                "class": Consumable,
+                "name": "Martian Whiskey",
+                "description": "Real alcohol imported from Mars. Nothing beats the real stuff after a hard day in the Belt.",
+                "value": 25,
+                "effect_type": "morale",
+                "effect_value": 30
+            },
+            "private_room": {
+                "class": QuestItem,
+                "name": "Private Room Rental",
+                "description": "A clean, secure, and private room at The Rusty Rocket for one night.",
+                "value": 50,
+                "quest_id": "room_rental"
+            },
             # "credits": {
             #     "class": Currency,
             #     "name": "Credits",

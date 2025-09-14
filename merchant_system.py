@@ -193,10 +193,13 @@ class MerchantSystem:
         ]
         
         # Menu state
-        self.selected_tab = "upgrades"  # "upgrades" or "resources"
+        self.selected_tab = "merchant_items"  # "merchant_items", "upgrades" or "resources"
         self.selected_index = 0
         self.scroll_offset = 0
         self.max_visible_items = 6
+
+        # Current merchant
+        self.current_merchant = None
         
         # Resource price multipliers (different per location)
         self.resource_price_multipliers = {
@@ -224,7 +227,38 @@ class MerchantSystem:
             }
             # Add other locations as needed
         }
-    
+
+    def get_merchant_inventory(self, game):
+        """Get inventory items specific to the current merchant"""
+        if not self.current_merchant:
+            return []
+
+        # Import here to avoid circular imports
+        from item_inventory import ItemFactory
+
+        # Ruby's Bar Inventory
+        if hasattr(self.current_merchant, 'name') and self.current_merchant.name == "Ruby":
+            ruby_items = []
+
+            # Add Ruby's drinks
+            synthhol = ItemFactory.create_item("synthhol")
+            if synthhol:
+                ruby_items.append(synthhol)
+
+            whiskey = ItemFactory.create_item("martian_whiskey")
+            if whiskey:
+                ruby_items.append(whiskey)
+
+            room = ItemFactory.create_item("private_room")
+            if room:
+                ruby_items.append(room)
+
+            return ruby_items
+
+        # CV or other merchants - return empty for now
+        # In the future, add their specific inventories here
+        return []
+
     def get_resource_price(self, resource_id, location_id="psyche_township"):
         """Get the price for a resource at a specific location"""
         # Get base value from resource registry
@@ -381,10 +415,12 @@ class MerchantSystem:
             
             # Tab switching
             if event.key == pygame.K_TAB:
-                if self.selected_tab == "upgrades":
+                if self.selected_tab == "merchant_items":
+                    self.selected_tab = "upgrades"
+                elif self.selected_tab == "upgrades":
                     self.selected_tab = "resources"
                 else:
-                    self.selected_tab = "upgrades"
+                    self.selected_tab = "merchant_items"
                 self.selected_index = 0
                 self.scroll_offset = 0
             
@@ -425,16 +461,33 @@ class MerchantSystem:
     
     def get_visible_items(self, game):
         """Get list of items to display based on selected tab"""
-        if self.selected_tab == "upgrades":
+        if self.selected_tab == "merchant_items":
+            # Get merchant-specific items
+            merchant_items = self.get_merchant_inventory(game)
+            items = []
+
+            for item in merchant_items:
+                items.append({
+                    "item": item,
+                    "name": item.name,
+                    "description": item.description,
+                    "price": item.value,
+                    "can_afford": game.player.credits >= item.value,
+                    "type": "item"
+                })
+
+            return items
+
+        elif self.selected_tab == "upgrades":
             return self.get_upgrades(game)
         else:  # "resources"
             resources = self.get_player_resources(game)
             items = []
-            
+
             for resource_id, amount in resources.items():
                 # Get price info
                 price = self.get_resource_price(resource_id, game.current_level.get("name", "psyche_township"))
-                
+
                 items.append({
                     "id": resource_id,
                     "name": resource_id.replace("_", " ").title(),
@@ -442,35 +495,64 @@ class MerchantSystem:
                     "price": price,
                     "total_value": price * amount
                 })
-            
+
             # Sort by name
             items.sort(key=lambda x: x["name"])
-            
+
             return items
     
     def perform_selected_action(self, game):
         """Perform action for selected item"""
         print("Performing action for selected item")
         visible_items = self.get_visible_items(game)
-    
+
         if 0 <= self.selected_index < len(visible_items):
             selected_item = visible_items[self.selected_index]
-        
-            if self.selected_tab == "upgrades":
+
+            if self.selected_tab == "merchant_items":
+                # Purchase merchant item
+                if selected_item["can_afford"]:
+                    success = self.purchase_merchant_item(game, selected_item["item"])
+                    if success:
+                        print(f"Purchased {selected_item['name']}!")
+                        return True
+
+            elif self.selected_tab == "upgrades":
                 # Purchase upgrade
                 if not selected_item["max_level"] and selected_item["can_afford"]:
                     success = self.purchase_upgrade(game, selected_item["upgrade"].id)
                     if success:
                         print(f"Purchased {selected_item['upgrade'].name} upgrade!")
                         return True
-        
+
             elif self.selected_tab == "resources":
                 # Sell all of the selected resource
                 success = self.sell_selected_resource(game)
                 return success
-    
+
         return False
-    
+
+    def purchase_merchant_item(self, game, item):
+        """Purchase an item from the merchant"""
+        # Check if player can afford it
+        if game.player.credits < item.value:
+            return False
+
+        # Deduct credits
+        game.player.credits -= item.value
+
+        # Add item to player's inventory
+        if hasattr(game.player, 'inventory'):
+            success = game.player.inventory.add_item(item)
+            if not success:
+                # Refund if inventory is full
+                game.player.credits += item.value
+                print(f"Inventory full! Cannot purchase {item.name}")
+                return False
+
+        print(f"Purchased {item.name} for {item.value} credits!")
+        return True
+
     def sell_selected_resource(self, game, quantity=None):
         """Sell selected resource"""
         print("Attempting to sell selected resource")
@@ -526,28 +608,39 @@ class MerchantSystem:
         
         # Draw tabs
         tab_y = panel_rect.y + 60
-        tab_width = panel_width // 2 - 10
-        
+        tab_width = panel_width // 3 - 10
+
+        # Merchant Items tab
+        merchant_tab_rect = pygame.Rect(panel_rect.x + 10, tab_y, tab_width, 40)
+        pygame.draw.rect(screen, (70, 70, 100) if self.selected_tab == "merchant_items" else (30, 30, 50), merchant_tab_rect)
+        pygame.draw.rect(screen, (200, 200, 200), merchant_tab_rect, 2)
+
+        merchant_tab_text = "Ruby's Bar" if (self.current_merchant and hasattr(self.current_merchant, 'name') and self.current_merchant.name == "Ruby") else "Buy Items"
+        merchant_text = self.font.render(f"1. {merchant_tab_text}", True, (255, 255, 255))
+        screen.blit(merchant_text, (merchant_tab_rect.centerx - merchant_text.get_width() // 2, tab_y + 10))
+
         # Upgrades tab
-        upgrades_tab_rect = pygame.Rect(panel_rect.x + 10, tab_y, tab_width, 40)
+        upgrades_tab_rect = pygame.Rect(panel_rect.x + panel_width // 3 + 5, tab_y, tab_width, 40)
         pygame.draw.rect(screen, (70, 70, 100) if self.selected_tab == "upgrades" else (30, 30, 50), upgrades_tab_rect)
         pygame.draw.rect(screen, (200, 200, 200), upgrades_tab_rect, 2)
-        
-        upgrades_text = self.font.render("1. Ship Upgrades", True, (255, 255, 255))
+
+        upgrades_text = self.font.render("2. Ship Upgrades", True, (255, 255, 255))
         screen.blit(upgrades_text, (upgrades_tab_rect.centerx - upgrades_text.get_width() // 2, tab_y + 10))
-        
+
         # Resources tab
-        resources_tab_rect = pygame.Rect(panel_rect.x + panel_width // 2 + 5, tab_y, tab_width, 40)
+        resources_tab_rect = pygame.Rect(panel_rect.x + 2 * panel_width // 3 + 5, tab_y, tab_width, 40)
         pygame.draw.rect(screen, (70, 70, 100) if self.selected_tab == "resources" else (30, 30, 50), resources_tab_rect)
         pygame.draw.rect(screen, (200, 200, 200), resources_tab_rect, 2)
-        
-        resources_text = self.font.render("2. Sell Resources", True, (255, 255, 255))
+
+        resources_text = self.font.render("3. Sell Resources", True, (255, 255, 255))
         screen.blit(resources_text, (resources_tab_rect.centerx - resources_text.get_width() // 2, tab_y + 10))
         
         # Draw content based on selected tab
         content_rect = pygame.Rect(panel_rect.x + 20, tab_y + 50, panel_width - 40, panel_height - 120)
-        
-        if self.selected_tab == "upgrades":
+
+        if self.selected_tab == "merchant_items":
+            self.draw_merchant_items_tab(screen, game, content_rect)
+        elif self.selected_tab == "upgrades":
             self.draw_upgrades_tab(screen, game, content_rect)
         else:  # "resources"
             self.draw_resources_tab(screen, game, content_rect)
@@ -558,7 +651,62 @@ class MerchantSystem:
             True, (200, 200, 200)
         )
         screen.blit(controls, (panel_rect.centerx - controls.get_width() // 2, panel_rect.bottom - 30))
-    
+
+    def draw_merchant_items_tab(self, screen, game, content_rect):
+        """Draw the merchant items tab content"""
+        items = self.get_visible_items(game)
+
+        # Handle empty list
+        if not items:
+            empty_text = self.font.render("No items available from this merchant", True, (200, 200, 200))
+            screen.blit(empty_text, (content_rect.centerx - empty_text.get_width() // 2, content_rect.y + 50))
+            return
+
+        # Draw column headers
+        header_y = content_rect.y
+        pygame.draw.line(screen, (150, 150, 150), (content_rect.x, header_y + 30), (content_rect.right, header_y + 30), 1)
+
+        header_item = self.font.render("Item", True, (200, 200, 200))
+        header_description = self.font.render("Description", True, (200, 200, 200))
+        header_price = self.font.render("Price", True, (200, 200, 200))
+
+        screen.blit(header_item, (content_rect.x + 10, header_y))
+        screen.blit(header_description, (content_rect.x + 150, header_y))
+        screen.blit(header_price, (content_rect.right - header_price.get_width() - 10, header_y))
+
+        # Draw visible items with scrolling
+        visible_items = items[self.scroll_offset:self.scroll_offset + self.max_visible_items]
+
+        for i, item_info in enumerate(visible_items):
+            # Calculate actual index in the full list
+            actual_index = i + self.scroll_offset
+
+            # Row position
+            row_y = header_y + 40 + i * 50
+
+            # Highlight if selected
+            if self.selected_index == actual_index:
+                row_rect = pygame.Rect(content_rect.x, row_y - 5, content_rect.width, 50)
+                pygame.draw.rect(screen, (70, 70, 100), row_rect)
+
+            # Draw item info
+            # Name
+            name_text = self.font.render(item_info["name"], True, (255, 255, 255))
+            screen.blit(name_text, (content_rect.x + 10, row_y))
+
+            # Description (wrap if too long)
+            description = item_info["description"][:60] + "..." if len(item_info["description"]) > 60 else item_info["description"]
+            desc_text = self.font_small.render(description, True, (200, 200, 200))
+            screen.blit(desc_text, (content_rect.x + 10, row_y + 25))
+
+            # Price
+            price_color = (0, 255, 0) if item_info["can_afford"] else (255, 0, 0)
+            price_text = self.font.render(f"{item_info['price']} credits", True, price_color)
+            screen.blit(price_text, (content_rect.right - price_text.get_width() - 10, row_y + 10))
+
+        # Draw scroll indicators if needed
+        self.draw_scroll_indicators(screen, content_rect, len(items))
+
     def draw_upgrades_tab(self, screen, game, content_rect):
         """Draw the upgrades tab content"""
         upgrades = self.get_upgrades(game)

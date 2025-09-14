@@ -170,8 +170,10 @@ class SimpleTextDialogue:
             print(f"🛒 Opening merchant GUI for {self.active_ai_character.name}")
             # Set up merchant interaction
             self.game.merchant_system.current_merchant = self.active_ai_character
-            self.game.merchant_mode = True
-            # Temporarily close dialogue to show shop
+            # Switch to merchant game state
+            from game_structure import GameState
+            self.game.game_state = GameState.MERCHANT
+            # Close dialogue to show shop
             self.is_active = False
         else:
             print(f"🛒 Merchant system not available")
