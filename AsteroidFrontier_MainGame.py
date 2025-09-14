@@ -5,11 +5,16 @@ import random
 import math
 import json
 
+# Setup logging first
+from game_logger import setup_game_logging, log_game_state_change, log_npc_creation
+logger = setup_game_logging()
+
 # Import game modules
 from game_structure import GameState, Player
 from map_system import Level, Tile, Camera
 from character_system import Character, Player as PlayerCharacter, NPC as NPCCharacter
 from dialogue_quest_system import DialogueManager, QuestManager, Quest
+from simple_text_dialogue import SimpleTextDialogue
 from item_inventory import Inventory, ItemFactory
 from space_travel_system import SystemMap, Location
 from save_system import SaveSystem, SaveLoadMenu
@@ -57,7 +62,9 @@ class AsteroidFrontier:
 
         # Create game systems
         self.dialogue_manager = DialogueManager(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.text_dialogue = SimpleTextDialogue(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.quest_manager = QuestManager()
+        self.save_system = SaveSystem(self)
 
         # Initialize empty objects for safety
         self.current_level = None
@@ -122,10 +129,14 @@ class AsteroidFrontier:
         try:
             with open(os.path.join('assets', 'dialogues', 'npcs.json'), 'r') as file:
                 data = json.load(file)
-            
+
             npcs_data = data.get("npcs", [])
             location_npcs = pygame.sprite.Group()
-        
+
+            # Special handling for Rusty Rocket - use AI consciousness
+            if location_id == "rusty_rocket":
+                return self.load_ai_npcs_for_rusty_rocket()
+
             # Find NPCs for this location
             for npc_data in npcs_data:
                 position = npc_data.get("position", {})
@@ -133,40 +144,98 @@ class AsteroidFrontier:
                     # Get NPC position
                     x = position.get("x", 0)
                     y = position.get("y", 0)
-                
+
                     # Get dialogue
                     dialogue_data = npc_data.get("dialogue", {})
                     default_dialogue = dialogue_data.get("default", ["Hello."])
-                
+
                     # Create NPC
-                    npc = NPCCharacter(npc_data.get("name", "Unknown"), 
-                                      x=x, 
-                                      y=y, 
+                    npc = NPCCharacter(npc_data.get("name", "Unknown"),
+                                      x=x,
+                                      y=y,
                                       dialogue=default_dialogue)
-                
+
                     # Set faction
                     npc.faction = npc_data.get("faction", "independent")
-                
+
                     # Add quests if available
                     quest_ids = npc_data.get("quests", [])
                     if quest_ids:
-                        quest = Quest(quest_ids[0], f"{npc.name}'s Task", 
+                        quest = Quest(quest_ids[0], f"{npc.name}'s Task",
                                    "Help with an important task.", ["Complete the objective"])
                         quest.credit_reward = 100
                         quest.xp_reward = 50
                         npc.quest = quest
-                
+
                     # Set full dialogue data for proper conversations
                     npc.full_dialogue = dialogue_data
-                
+
                     # Add to group
                     location_npcs.add(npc)
                     print(f"Loaded NPC from JSON: {npc.name}")
-        
+
             return location_npcs
     
         except Exception as e:
             print(f"Error loading NPCs from JSON: {e}")
+            return pygame.sprite.Group()
+
+    def load_ai_npcs_for_rusty_rocket(self):
+        """Load AI-powered NPCs for the Rusty Rocket"""
+        try:
+            from ai_character import create_ruby_character, create_cv_character
+
+            location_npcs = pygame.sprite.Group()
+
+            # Create Ruby with AI consciousness
+            ruby = create_ruby_character(x=320, y=96)  # Position 1 from map
+            location_npcs.add(ruby)
+            logger.info("🍷 Loaded Ruby with AI consciousness")
+            log_npc_creation("Ruby", "AI Character", "rusty_rocket")
+
+            # Create CV with AI consciousness
+            cv = create_cv_character(x=768, y=416)  # Position 2 from map
+            location_npcs.add(cv)
+            logger.info("📰 Loaded CV with AI consciousness")
+            log_npc_creation("CV", "AI Character", "rusty_rocket")
+
+            return location_npcs
+
+        except ImportError as e:
+            print(f"AI character system not available, falling back to static NPCs: {e}")
+            # Fallback to loading NPCs normally from JSON
+            return self._load_static_rusty_rocket_npcs()
+        except Exception as e:
+            print(f"Error loading AI NPCs: {e}")
+            return self._load_static_rusty_rocket_npcs()
+
+    def _load_static_rusty_rocket_npcs(self):
+        """Fallback method to load static NPCs for Rusty Rocket"""
+        try:
+            with open(os.path.join('assets', 'dialogues', 'npcs.json'), 'r') as file:
+                data = json.load(file)
+
+            npcs_data = data.get("npcs", [])
+            location_npcs = pygame.sprite.Group()
+
+            for npc_data in npcs_data:
+                position = npc_data.get("position", {})
+                if position.get("location") == "rusty_rocket":
+                    x = position.get("x", 0)
+                    y = position.get("y", 0)
+                    dialogue_data = npc_data.get("dialogue", {})
+                    default_dialogue = dialogue_data.get("default", ["Hello."])
+
+                    from character_system import NPC as NPCCharacter
+                    npc = NPCCharacter(npc_data.get("name", "Unknown"),
+                                      x=x, y=y, dialogue=default_dialogue)
+                    npc.faction = npc_data.get("faction", "independent")
+                    npc.full_dialogue = dialogue_data
+
+                    location_npcs.add(npc)
+
+            return location_npcs
+        except Exception:
             return pygame.sprite.Group()
 
     def load_locations(self):
@@ -1347,6 +1416,8 @@ class AsteroidFrontier:
             # Draw dialogue if active
             if self.dialogue_manager.is_dialogue_active():
                 self.dialogue_manager.draw(screen)
+            elif self.text_dialogue.is_conversation_active():
+                self.text_dialogue.draw(screen)
         
             # Draw UI elements if not in dialogue
             if self.game_state != GameState.DIALOGUE:
@@ -1975,8 +2046,22 @@ class AsteroidFrontier:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
-        
-            # First check if we're in any menu mode
+
+            # PRIORITY: Handle AI text dialogue first (highest priority)
+            if self.text_dialogue.is_conversation_active():
+                if self.text_dialogue.handle_event(event):
+                    return True
+
+            # Then handle traditional dialogue
+            if self.dialogue_manager.is_dialogue_active():
+                if event.type == pygame.KEYDOWN:
+                    self.dialogue_manager.handle_key(event.key)
+                    return True
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    self.dialogue_manager.handle_click(event.pos)
+                    return True
+
+            # Then check if we're in any menu mode
             menu_open = self.show_inventory or self.show_map or self.show_quest_log
         
             if menu_open:
@@ -2150,8 +2235,16 @@ class AsteroidFrontier:
                     # Then check NPC interactions
                     for npc in self.npcs:
                         if pygame.sprite.collide_rect(self.player, npc):
-                            self.dialogue_manager.start_dialogue(npc, self.player)
-                            self.game_state = GameState.DIALOGUE
+                            # Check if this is an AI character
+                            if hasattr(npc, 'ai_agent_name') and hasattr(npc, 'talk_to_player'):
+                                # Use the new text dialogue system for AI characters
+                                self.text_dialogue.start_conversation(npc, self.player, self)
+                                self.game_state = GameState.DIALOGUE
+                                logger.info(f"🤖 Started AI text conversation with {npc.name}")
+                            else:
+                                # Use traditional dialogue for regular NPCs
+                                self.dialogue_manager.start_dialogue(npc, self.player)
+                                self.game_state = GameState.DIALOGUE
                             return True
                         
                     # Check for helm interaction in ship cabin
@@ -2163,18 +2256,32 @@ class AsteroidFrontier:
                 if self.dialogue_manager.is_dialogue_active():
                     self.dialogue_manager.handle_key(event.key)
                     return True
+                elif self.text_dialogue.is_conversation_active():
+                    self.text_dialogue.handle_event(event)
+                    return True
     
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
                     if self.dialogue_manager.is_dialogue_active():
                         self.dialogue_manager.handle_click(event.pos)
                         return True
+                    elif self.text_dialogue.is_conversation_active():
+                        self.text_dialogue.handle_event(event)
+                        return True
                     elif self.game_state == GameState.OVERWORLD:
                         # Check for NPC interaction if we're close enough
                         for npc in self.npcs:
                             if pygame.sprite.collide_rect(self.player, npc):
-                                self.dialogue_manager.start_dialogue(npc, self.player)
-                                self.game_state = GameState.DIALOGUE
+                                # Check if this is an AI character
+                                if hasattr(npc, 'ai_agent_name') and hasattr(npc, 'talk_to_player'):
+                                    # Use the new text dialogue system for AI characters
+                                    self.text_dialogue.start_conversation(npc, self.player, self)
+                                    self.game_state = GameState.DIALOGUE
+                                    logger.info(f"🤖 Started AI text conversation with {npc.name}")
+                                else:
+                                    # Use traditional dialogue for regular NPCs
+                                    self.dialogue_manager.start_dialogue(npc, self.player)
+                                    self.game_state = GameState.DIALOGUE
                                 return True
     
             return True
@@ -2220,8 +2327,11 @@ class AsteroidFrontier:
                 self.check_repair_interaction()  # This should check for the E key
 
         elif self.game_state == GameState.DIALOGUE:
+            # Update text dialogue system
+            self.text_dialogue.update(dt)
+
             # Check if dialogue has ended
-            if not self.dialogue_manager.is_dialogue_active():
+            if not self.dialogue_manager.is_dialogue_active() and not self.text_dialogue.is_conversation_active():
                 self.game_state = GameState.OVERWORLD
                 #Make sure any "held" keys don't carry over
                 pygame.event.clear()  # Clear any queued events

@@ -40,9 +40,15 @@ class DialogueTree:
         self.current_node_id = None
         self.start_node_id = None
     
-    def add_node(self, node_id, text, responses=None, actions=None):
+    def add_node(self, node_id, text_or_node, responses=None, actions=None):
         """Add a dialogue node to the tree"""
-        self.nodes[node_id] = DialogueNode(text, responses, actions)
+        if isinstance(text_or_node, DialogueNode):
+            # If a DialogueNode is passed, use it directly
+            self.nodes[node_id] = text_or_node
+        else:
+            # If text is passed, create a new DialogueNode
+            self.nodes[node_id] = DialogueNode(text_or_node, responses, actions)
+
         if not self.start_node_id:
             self.start_node_id = node_id
     
@@ -64,12 +70,12 @@ class DialogueTree:
     def choose_response(self, index):
         """Choose a response and move to the next node"""
         current_node = self.get_current_node()
-        if not self.current_node:
+        if not current_node:
             return None
-            
+
         next_node_id = current_node.choose_response(index)
         if next_node_id:
-            self.current_node = next_node_id
+            self.current_node_id = next_node_id
             return self.get_current_node()
         
         return None
@@ -115,7 +121,14 @@ class DialogueManager:
         """Start a dialogue with an NPC"""
         self.current_npc = npc
         self.player = player
-    
+
+        # Check if this is an AI character - skip old dialogue system
+        if hasattr(npc, 'ai_agent_name') and hasattr(npc, 'talk_to_player'):
+            print(f"🤖 AI character {npc.name} detected - using text dialogue system")
+            # AI characters are handled by SimpleTextDialogue system
+            # Don't activate the old dialogue system
+            return
+
         # Check if NPC has full dialogue data from JSON
         if hasattr(npc, 'full_dialogue') and npc.full_dialogue:
             print(f"Using full dialogue data for {npc.name}")
@@ -278,17 +291,14 @@ class DialogueManager:
         """Select a dialogue response"""
         if not self.active_dialogue or not self.dialogue_tree:
             return None
-        
-        # Get actions from current node
+
+        # Get actions from current node before moving
         actions = self.active_dialogue.get_actions()
         self.process_actions(actions)
-    
-        # Get next dialogue node
-        next_node = None
-        if 0 <= index < len(self.active_dialogue.responses):
-            _, next_node_id = self.active_dialogue.responses[index]
-            next_node = self.dialogue_tree.get_node(next_node_id)
-    
+
+        # Use DialogueTree's choose_response to properly update state
+        next_node = self.dialogue_tree.choose_response(index)
+
         # Update active dialogue
         self.active_dialogue = next_node
         
@@ -363,7 +373,103 @@ class DialogueManager:
     def is_dialogue_active(self):
         """Check if a dialogue is currently active"""
         return self.active_dialogue is not None
-    
+
+    def start_ai_dialogue(self, npc, player):
+        """Start a dialogue with an AI-powered character"""
+        try:
+            from game_logger import log_ai_interaction, log_dialogue_error
+            print(f"🤖 Starting AI dialogue with {npc.name} for player {player.name}")
+            # Get AI response for initial greeting
+            ai_response = npc.talk_to_player(player.name)
+
+            # Create a simple dialogue node with the AI response
+            self.dialogue_tree = DialogueTree(npc.name)
+
+            # Create dialogue node with AI response and player options
+            responses = [
+                ("Ask about drinks", "drinks"),
+                ("Ask about news", "news"),
+                ("Ask about the Belt", "belt"),
+                ("Say goodbye", "end")
+            ]
+
+            start_node = DialogueNode(
+                text=ai_response,
+                responses=responses
+            )
+
+            # Create follow-up nodes for different topics
+            drinks_node = DialogueNode(
+                text=self._get_ai_response_for_topic(npc, player.name, "I'm interested in drinks"),
+                responses=[("Thanks", "end")]
+            )
+
+            news_node = DialogueNode(
+                text=self._get_ai_response_for_topic(npc, player.name, "What's the news?"),
+                responses=[("Interesting", "end")]
+            )
+
+            belt_node = DialogueNode(
+                text=self._get_ai_response_for_topic(npc, player.name, "Tell me about the Belt"),
+                responses=[("I see", "end")]
+            )
+
+            end_node = DialogueNode(
+                text="*nods and returns to business*",
+                responses=[],
+                actions={"end_dialogue": True}
+            )
+
+            # Add nodes to tree
+            self.dialogue_tree.add_node("start", start_node)
+            self.dialogue_tree.add_node("drinks", drinks_node)
+            self.dialogue_tree.add_node("news", news_node)
+            self.dialogue_tree.add_node("belt", belt_node)
+            self.dialogue_tree.add_node("end", end_node)
+
+            # Set connections
+            start_node.next_nodes = {"drinks": "drinks", "news": "news", "belt": "belt", "end": "end"}
+            drinks_node.next_nodes = {"end": "end"}
+            news_node.next_nodes = {"end": "end"}
+            belt_node.next_nodes = {"end": "end"}
+
+            # Start the dialogue
+            self.dialogue_tree.start_dialogue()
+            self.active_dialogue = self.dialogue_tree.get_current_node()
+
+            print(f"Started AI dialogue with {npc.name}: {ai_response[:50]}...")
+
+        except Exception as e:
+            print(f"Error starting AI dialogue: {e}")
+            # Fallback to simple dialogue
+            self._start_fallback_ai_dialogue(npc, player)
+
+    def _get_ai_response_for_topic(self, npc, player_name, message):
+        """Get AI response for a specific topic"""
+        try:
+            return npc.talk_to_player(player_name, message)
+        except Exception as e:
+            print(f"Error getting AI response: {e}")
+            return f"{npc.name} seems lost in thought."
+
+    def _start_fallback_ai_dialogue(self, npc, player):
+        """Fallback dialogue when AI is unavailable"""
+        self.dialogue_tree = DialogueTree(npc.name)
+
+        fallback_text = f"Hello, {player.name}! (AI consciousness unavailable)"
+        if hasattr(npc, 'dialogue') and npc.dialogue:
+            fallback_text = npc.dialogue[0]
+
+        end_node = DialogueNode(
+            text=fallback_text,
+            responses=[("Goodbye", "end")],
+            actions={"end_dialogue": True}
+        )
+
+        self.dialogue_tree.add_node("start", end_node)
+        self.dialogue_tree.start_dialogue()
+        self.active_dialogue = self.dialogue_tree.get_current_node()
+
     def draw(self, surface=None):
         """Draw the dialogue UI"""
          # Use provided surface or fall back to global screen
@@ -455,6 +561,14 @@ class DialogueManager:
     
     def _wrap_text(self, text, max_width):
         """Wrap text to fit within width"""
+        # Safety check for text type
+        if not isinstance(text, str):
+            print(f"ERROR: _wrap_text received non-string: {type(text)}")
+            if hasattr(text, 'text'):
+                text = text.text
+            else:
+                text = str(text)
+
         words = text.split(' ')
         lines = []
         current_line = []
